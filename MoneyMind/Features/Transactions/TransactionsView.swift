@@ -57,6 +57,31 @@ struct TransactionsView: View {
             } message: {
                 Text("Are you sure you want to delete this transaction?")
             }
+            .alert("No Goals Yet", isPresented: $viewModel.showNoGoalsAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Create a savings goal in the Goals tab to start allocating income towards it.")
+            }
+            .sheet(item: $viewModel.contributeSourceTransaction) { source in
+                QuickContributeSheet(
+                    sourceTransaction: source,
+                    goals: viewModel.goals,
+                    goalProgress: { goal in
+                        (
+                            saved: viewModel.savedAmount(for: goal.id),
+                            target: goal.targetAmount
+                        )
+                    },
+                    currencyCode: currencyCode
+                ) { goalId, amount, date, note in
+                    viewModel.addContribution(
+                        goalId: goalId,
+                        amount: amount,
+                        date: date,
+                        note: note
+                    )
+                }
+            }
         }
     }
     
@@ -179,6 +204,36 @@ struct TransactionsView: View {
                                 Label("Edit", systemImage: "pencil")
                             }
                             .tint(.blue)
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            if transaction.type == .income {
+                                Button {
+                                    viewModel.requestContribution(for: transaction)
+                                } label: {
+                                    Label("Save to Goal", systemImage: "target")
+                                }
+                                .tint(.indigo)
+                            }
+                        }
+                        .contextMenu {
+                            if transaction.type == .income {
+                                Button {
+                                    viewModel.requestContribution(for: transaction)
+                                } label: {
+                                    Label("Save to Goal", systemImage: "target")
+                                }
+                            }
+                            Button {
+                                viewModel.editingTransaction = transaction
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            Button(role: .destructive) {
+                                viewModel.transactionToDelete = transaction
+                                viewModel.showDeleteAlert = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                     }
                 } header: {

@@ -31,6 +31,14 @@ final class TransactionsViewModel {
     var categories: [TransactionCategory]
 
     @ObservationIgnored
+    @FetchAll(SavingsGoal.order(by: \.createdAt))
+    var goals: [SavingsGoal]
+
+    @ObservationIgnored
+    @FetchAll(GoalContribution.order(by: \.id))
+    var goalContributions: [GoalContribution]
+
+    @ObservationIgnored
     @Dependency(\.defaultDatabase) var database
 
     var isShowingAddSheet = false
@@ -41,6 +49,9 @@ final class TransactionsViewModel {
     var filterType: TransactionType? = nil
     var searchText: String = ""
     var selectedPeriod: TransactionPeriod = .month
+
+    var contributeSourceTransaction: Transaction?
+    var showNoGoalsAlert = false
 
     // Transactions filtered by period only (used for balance card totals)
     var periodFilteredTransactions: [Transaction] {
@@ -143,5 +154,39 @@ final class TransactionsViewModel {
 
     func categoriesForType(_ type: TransactionType) -> [TransactionCategory] {
         categories.filter { $0.type == type }
+    }
+
+    // MARK: - Quick Contribute to Goal
+
+    func requestContribution(for transaction: Transaction) {
+        guard !goals.isEmpty else {
+            showNoGoalsAlert = true
+            return
+        }
+        contributeSourceTransaction = transaction
+    }
+
+    func savedAmount(for goalId: Int) -> Double {
+        goalContributions
+            .filter { $0.goalId == goalId }
+            .reduce(0) { $0 + $1.amount }
+    }
+
+    func addContribution(goalId: Int, amount: Double, date: Date, note: String) {
+        do {
+            try database.write { db in
+                try GoalContribution.insert {
+                    GoalContribution.Draft(
+                        goalId: goalId,
+                        amount: amount,
+                        date: date,
+                        note: note,
+                        createdAt: Date()
+                    )
+                }.execute(db)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

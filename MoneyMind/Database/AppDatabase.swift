@@ -88,5 +88,67 @@ private func migrate(_ db: DatabaseQueue) throws {
         }
     }
 
+    migrator.registerMigration("v3_goals_and_extra_categories") { db in
+        try db.create(table: "savings_goals", ifNotExists: true) { t in
+            t.autoIncrementedPrimaryKey("id")
+            t.column("name", .text).notNull()
+            t.column("icon", .text).notNull()
+            t.column("colorHex", .text).notNull()
+            t.column("targetAmount", .double).notNull()
+            t.column("targetDate", .text)
+            t.column("note", .text).notNull().defaults(to: "")
+            t.column("createdAt", .text).notNull()
+        }
+
+        try db.create(table: "goal_contributions", ifNotExists: true) { t in
+            t.autoIncrementedPrimaryKey("id")
+            t.column("goalId", .integer).notNull()
+                .references("savings_goals", onDelete: .cascade)
+            t.column("amount", .double).notNull()
+            t.column("date", .text).notNull()
+            t.column("note", .text).notNull().defaults(to: "")
+            t.column("createdAt", .text).notNull()
+        }
+
+        let additionalCategories: [(name: String, icon: String, colorHex: String, type: TransactionType)] = [
+            ("Groceries",      "cart.fill",                   "#10B981", .expense),
+            ("Coffee",         "cup.and.saucer.fill",         "#8B5E3C", .expense),
+            ("Fuel",           "fuelpump.fill",               "#F59E0B", .expense),
+            ("Subscriptions",  "arrow.triangle.2.circlepath", "#8B5CF6", .expense),
+            ("Fitness",        "figure.run",                  "#EF4444", .expense),
+            ("Personal Care",  "sparkles",                    "#EC4899", .expense),
+            ("Insurance",      "shield.fill",                 "#0EA5E9", .expense),
+            ("Travel",         "airplane",                    "#06B6D4", .expense),
+            ("Pets",           "pawprint.fill",               "#D97706", .expense),
+            ("Clothing",       "tshirt.fill",                 "#BE185D", .expense),
+
+            ("Business",       "briefcase.fill",              "#059669", .income),
+            ("Rental",         "building.2.fill",             "#7C3AED", .income),
+            ("Bonus",          "star.fill",                   "#EAB308", .income),
+            ("Refund",         "arrow.uturn.left.circle.fill","#3B82F6", .income),
+        ]
+
+        let existingNames: Set<String> = {
+            let rows = (try? String.fetchAll(db, sql: "SELECT name FROM categories")) ?? []
+            return Set(rows)
+        }()
+
+        let newCategories = additionalCategories.filter { !existingNames.contains($0.name) }
+        guard !newCategories.isEmpty else { return }
+
+        let now = Date()
+        try db.seed {
+            for item in newCategories {
+                TransactionCategory.Draft(
+                    name: item.name,
+                    icon: item.icon,
+                    colorHex: item.colorHex,
+                    type: item.type,
+                    createdAt: now
+                )
+            }
+        }
+    }
+
     try migrator.migrate(db)
 }
