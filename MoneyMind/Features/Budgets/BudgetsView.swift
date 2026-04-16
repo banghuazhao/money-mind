@@ -13,6 +13,9 @@ struct BudgetsView: View {
                     if viewModel.budgets.isEmpty {
                         emptyState
                     } else {
+                        if viewModel.isCurrentMonth && viewModel.hasActiveAlerts {
+                            alertBanner
+                        }
                         overallSummaryCard
                         budgetListSection
                     }
@@ -104,6 +107,92 @@ struct BudgetsView: View {
         }
         .padding(.horizontal, 4)
         .padding(.top, 4)
+    }
+
+    // MARK: - Alert Banner
+
+    private var alertBanner: some View {
+        let overspent = viewModel.overspentBudgets
+        let warnings = viewModel.warningBudgets
+        let isCritical = !overspent.isEmpty
+        let accent: Color = isCritical ? .red : .orange
+        let icon = isCritical ? "exclamationmark.octagon.fill" : "exclamationmark.triangle.fill"
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundStyle(accent)
+                    .symbolEffect(.pulse, options: .repeat(.periodic(delay: 2)))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(bannerTitle(overspent: overspent.count, warnings: warnings.count))
+                        .font(.subheadline.weight(.semibold))
+                    Text(bannerSubtitle(overspent: overspent, warnings: warnings))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+            }
+
+            if overspent.count + warnings.count <= 3 {
+                VStack(spacing: 6) {
+                    ForEach(overspent.prefix(3)) { bp in
+                        alertItem(progress: bp, color: .red)
+                    }
+                    ForEach(warnings.prefix(max(0, 3 - overspent.count))) { bp in
+                        alertItem(progress: bp, color: .orange)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(accent.opacity(0.25), lineWidth: 1)
+        )
+        .sensoryFeedback(.warning, trigger: overspent.count)
+    }
+
+    private func alertItem(progress: BudgetProgress, color: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: progress.category?.icon ?? "questionmark.circle")
+                .font(.caption)
+                .foregroundStyle(color)
+                .frame(width: 18)
+
+            Text(progress.category?.name ?? "Unknown")
+                .font(.caption.weight(.medium))
+
+            Spacer(minLength: 4)
+
+            Text(progress.status == .overspent
+                 ? "Over by \(CurrencyFormatter.format(progress.overspent, currencyCode: currencyCode))"
+                 : "\(Int(progress.percentage))% used")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(color)
+        }
+    }
+
+    private func bannerTitle(overspent: Int, warnings: Int) -> String {
+        if overspent > 0 && warnings > 0 {
+            return "\(overspent) over limit · \(warnings) nearing limit"
+        } else if overspent > 0 {
+            return overspent == 1 ? "1 budget over limit" : "\(overspent) budgets over limit"
+        } else {
+            return warnings == 1 ? "1 budget nearing limit" : "\(warnings) budgets nearing limit"
+        }
+    }
+
+    private func bannerSubtitle(overspent: [BudgetProgress], warnings: [BudgetProgress]) -> String {
+        if !overspent.isEmpty {
+            return "Consider reviewing your spending in these categories."
+        }
+        return "You've used 80% or more of these budgets."
     }
 
     // MARK: - Empty State

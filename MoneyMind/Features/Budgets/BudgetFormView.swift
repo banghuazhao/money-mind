@@ -136,7 +136,7 @@ struct BudgetFormView: View {
                 .foregroundStyle(.yellow)
                 .font(.subheadline)
 
-            Text("This budget applies every month. You'll see a warning when spending reaches 80%, and an alert when you go over.")
+            Text("This budget applies every month. You'll see an in-app alert on the Budgets tab when spending reaches 80% or goes over the limit.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

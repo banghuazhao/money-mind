@@ -159,6 +159,20 @@ final class BudgetsViewModel {
         return .healthy
     }
 
+    // MARK: - Alerts
+
+    var overspentBudgets: [BudgetProgress] {
+        budgetProgress.filter { $0.status == .overspent }
+    }
+
+    var warningBudgets: [BudgetProgress] {
+        budgetProgress.filter { $0.status == .warning }
+    }
+
+    var hasActiveAlerts: Bool {
+        !overspentBudgets.isEmpty || !warningBudgets.isEmpty
+    }
+
     var daysRemainingInMonth: Int {
         guard isCurrentMonth else { return 0 }
         let calendar = Calendar.current
