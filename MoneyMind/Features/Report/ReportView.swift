@@ -10,11 +10,8 @@ struct ReportView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     periodPicker
-
                     balanceSummarySection
-
                     monthlyBarChartSection
-
                     categoryBreakdownSection
                 }
                 .padding(.horizontal)
@@ -26,6 +23,8 @@ struct ReportView: View {
         }
     }
 
+    // MARK: - Period Picker
+
     private var periodPicker: some View {
         Picker("Period", selection: $viewModel.selectedPeriod) {
             ForEach(ReportPeriod.allCases, id: \.self) { period in
@@ -36,14 +35,31 @@ struct ReportView: View {
         .padding(.top, 4)
     }
 
+    // MARK: - Balance Summary
+
     private var balanceSummarySection: some View {
         VStack(spacing: 12) {
             HStack {
                 Text("Overview")
                     .font(.headline)
-                    .fontWeight(.semibold)
                 Spacer()
             }
+
+            VStack(spacing: 4) {
+                Text("Net Balance")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(CurrencyFormatter.format(viewModel.balance, currencyCode: currencyCode))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(viewModel.balance >= 0 ? .green : .red)
+                    .contentTransition(.numericText())
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                (viewModel.balance >= 0 ? Color.green : Color.red).opacity(0.08),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
 
             HStack(spacing: 12) {
                 MetricCard(
@@ -60,29 +76,22 @@ struct ReportView: View {
                     icon: "arrow.up.circle.fill"
                 )
             }
-
-            MetricCard(
-                title: "Balance",
-                value: CurrencyFormatter.format(viewModel.balance, currencyCode: currencyCode),
-                color: viewModel.balance >= 0 ? .blue : .orange,
-                icon: "equal.circle.fill",
-                fullWidth: true
-            )
         }
     }
 
+    // MARK: - Monthly Bar Chart
+
     private var monthlyBarChartSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("6-Month Overview")
+            Text("6-Month Trend")
                 .font(.headline)
-                .fontWeight(.semibold)
 
             Chart {
                 ForEach(viewModel.monthlyData) { data in
                     BarMark(
                         x: .value("Month", data.month),
                         y: .value("Income", data.income),
-                        width: .ratio(0.4)
+                        width: .ratio(0.35)
                     )
                     .foregroundStyle(Color.green.gradient)
                     .position(by: .value("Type", "Income"))
@@ -90,7 +99,7 @@ struct ReportView: View {
                     BarMark(
                         x: .value("Month", data.month),
                         y: .value("Expense", data.expense),
-                        width: .ratio(0.4)
+                        width: .ratio(0.35)
                     )
                     .foregroundStyle(Color.red.gradient)
                     .position(by: .value("Type", "Expense"))
@@ -98,28 +107,48 @@ struct ReportView: View {
             }
             .frame(height: 200)
             .chartLegend(.hidden)
+            .chartYAxis {
+                AxisMarks(position: .leading) { _ in
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
+                        .foregroundStyle(Color(.systemGray4))
+                    AxisValueLabel()
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisValueLabel()
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             HStack(spacing: 16) {
                 HStack(spacing: 6) {
-                    Circle().fill(Color.green).frame(width: 10, height: 10)
-                    Text("Income").font(.caption).foregroundStyle(.secondary)
+                    Circle().fill(Color.green.gradient).frame(width: 8, height: 8)
+                    Text("Income").font(.caption2).foregroundStyle(.secondary)
                 }
                 HStack(spacing: 6) {
-                    Circle().fill(Color.red).frame(width: 10, height: 10)
-                    Text("Expense").font(.caption).foregroundStyle(.secondary)
+                    Circle().fill(Color.red.gradient).frame(width: 8, height: 8)
+                    Text("Expense").font(.caption2).foregroundStyle(.secondary)
                 }
             }
         }
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
     }
+
+    // MARK: - Category Breakdown
 
     private var categoryBreakdownSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("By Category")
                     .font(.headline)
-                    .fontWeight(.semibold)
                 Spacer()
                 Picker("Type", selection: $viewModel.selectedType) {
                     ForEach(TransactionType.allCases, id: \.self) { type in
@@ -140,6 +169,7 @@ struct ReportView: View {
                 donutChartSection
 
                 Divider()
+                    .padding(.vertical, 4)
 
                 ForEach(viewModel.categoryBreakdown) { item in
                     CategoryBreakdownRow(
@@ -150,19 +180,26 @@ struct ReportView: View {
             }
         }
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
     }
 
+    // MARK: - Donut Chart
+
     private var donutChartSection: some View {
-        let totalAmount = viewModel.selectedType == .expense ? viewModel.totalExpense : viewModel.totalIncome
+        let totalAmount = viewModel.selectedType == .expense
+            ? viewModel.totalExpense
+            : viewModel.totalIncome
         return Chart(viewModel.categoryBreakdown) { item in
             SectorMark(
                 angle: .value("Amount", item.amount),
-                innerRadius: .ratio(0.55),
+                innerRadius: .ratio(0.6),
                 angularInset: 2
             )
             .foregroundStyle(Color(hex: item.categoryColorHex))
-            .cornerRadius(4)
+            .cornerRadius(5)
         }
         .frame(height: 200)
         .chartLegend(.hidden)
@@ -173,6 +210,7 @@ struct ReportView: View {
                     .foregroundStyle(.secondary)
                 Text(CurrencyFormatter.format(totalAmount, currencyCode: currencyCode))
                     .font(.callout.weight(.bold))
+                    .fontDesign(.rounded)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
             }
@@ -180,6 +218,8 @@ struct ReportView: View {
         }
     }
 }
+
+// MARK: - Metric Card
 
 struct MetricCard: View {
     let title: String
@@ -200,6 +240,7 @@ struct MetricCard: View {
                     .foregroundStyle(.secondary)
                 Text(value)
                     .font(.subheadline.weight(.bold))
+                    .fontDesign(.rounded)
                     .foregroundStyle(color)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -208,20 +249,23 @@ struct MetricCard: View {
         }
         .frame(maxWidth: fullWidth ? .infinity : nil, alignment: .leading)
         .padding(14)
-        .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+        .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .frame(maxWidth: fullWidth ? .infinity : .infinity)
     }
 }
 
+// MARK: - Category Breakdown Row
+
 struct CategoryBreakdownRow: View {
     let item: CategorySpending
     let currencyCode: String
+    @State private var animatedPercentage: Double = 0
 
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color(hex: item.categoryColorHex).opacity(0.15))
+                    .fill(Color(hex: item.categoryColorHex).opacity(0.12))
                     .frame(width: 40, height: 40)
                 Image(systemName: item.categoryIcon)
                     .foregroundStyle(Color(hex: item.categoryColorHex))
@@ -236,13 +280,16 @@ struct CategoryBreakdownRow: View {
                     ZStack(alignment: .leading) {
                         Capsule()
                             .fill(Color(.systemGray5))
-                            .frame(height: 5)
+                            .frame(height: 6)
                         Capsule()
-                            .fill(Color(hex: item.categoryColorHex))
-                            .frame(width: geo.size.width * item.percentage / 100, height: 5)
+                            .fill(Color(hex: item.categoryColorHex).gradient)
+                            .frame(
+                                width: geo.size.width * animatedPercentage / 100,
+                                height: 6
+                            )
                     }
                 }
-                .frame(height: 5)
+                .frame(height: 6)
             }
 
             Spacer()
@@ -250,11 +297,22 @@ struct CategoryBreakdownRow: View {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(CurrencyFormatter.format(item.amount, currencyCode: currencyCode))
                     .font(.subheadline.weight(.semibold))
+                    .fontDesign(.rounded)
                 Text(String(format: "%.1f%%", item.percentage))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 4)
+        .onAppear {
+            withAnimation(.spring(duration: 0.8, bounce: 0.1).delay(0.15)) {
+                animatedPercentage = item.percentage
+            }
+        }
+        .onChange(of: item.percentage) { _, newValue in
+            withAnimation(.spring(duration: 0.5)) {
+                animatedPercentage = newValue
+            }
+        }
     }
 }

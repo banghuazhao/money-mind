@@ -52,61 +52,17 @@ struct TransactionFormView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Picker("Type", selection: $type) {
-                        ForEach(TransactionType.allCases, id: \.self) { t in
-                            Label(t.displayName, systemImage: t.systemImage).tag(t)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: type) { _, newType in
-                        if selectedCategory?.type != newType {
-                            selectedCategory = availableCategories.first
-                        }
-                    }
+            ScrollView {
+                VStack(spacing: 24) {
+                    typePicker
+                    amountSection
+                    categorySection
+                    detailsSection
                 }
-                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-
-                Section("Amount") {
-                    HStack {
-                        Text(currencyCode)
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                            .padding(.trailing, 4)
-                        TextField("0.00", text: $amountText)
-                            .keyboardType(.decimalPad)
-                            .font(.title2.weight(.semibold))
-                    }
-                }
-
-                Section("Category") {
-                    if availableCategories.isEmpty {
-                        Text("No categories available. Add one in the Categories tab.")
-                            .foregroundStyle(.secondary)
-                            .font(.callout)
-                    } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(availableCategories) { category in
-                                    CategoryChip(
-                                        category: category,
-                                        isSelected: selectedCategory?.id == category.id
-                                    ) {
-                                        selectedCategory = category
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                }
-
-                Section("Details") {
-                    TextField("Note (optional)", text: $note)
-                    DatePicker("Date", selection: $date, displayedComponents: [.date])
-                }
+                .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
             .navigationTitle(isEditing ? "Edit Transaction" : "New Transaction")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -123,6 +79,138 @@ struct TransactionFormView: View {
             }
         }
     }
+
+    // MARK: - Type Picker
+
+    private var typePicker: some View {
+        HStack(spacing: 0) {
+            ForEach(TransactionType.allCases, id: \.self) { t in
+                Button {
+                    withAnimation(.spring(duration: 0.3)) {
+                        type = t
+                        if selectedCategory?.type != t {
+                            selectedCategory = availableCategories.first
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: t.systemImage)
+                            .font(.caption.weight(.semibold))
+                        Text(t.displayName)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(type == t ? .white : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        type == t
+                            ? (t == .expense ? Color.red : Color.green)
+                            : Color.clear,
+                        in: Capsule()
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(Color(.systemGray5), in: Capsule())
+    }
+
+    // MARK: - Amount
+
+    private var amountSection: some View {
+        VStack(spacing: 8) {
+            Text(currencyCode)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            TextField("0.00", text: $amountText)
+                .keyboardType(.decimalPad)
+                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(type == .expense ? .red : .green)
+                .minimumScaleFactor(0.5)
+        }
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity)
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+    }
+
+    // MARK: - Category
+
+    private var categorySection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Category")
+                .font(.headline)
+
+            if availableCategories.isEmpty {
+                Text("No categories available. Add one in the Categories tab.")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 12)
+            } else {
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4),
+                    spacing: 16
+                ) {
+                    ForEach(availableCategories) { category in
+                        CategoryChip(
+                            category: category,
+                            isSelected: selectedCategory?.id == category.id
+                        ) {
+                            selectedCategory = category
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+    }
+
+    // MARK: - Details
+
+    private var detailsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Details")
+                .font(.headline)
+
+            VStack(spacing: 12) {
+                TextField("Note (optional)", text: $note)
+                    .padding(12)
+                    .background(
+                        Color(.tertiarySystemFill),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+
+                HStack {
+                    Text("Date")
+                    Spacer()
+                    DatePicker("", selection: $date, displayedComponents: [.date])
+                        .labelsHidden()
+                }
+                .padding(12)
+                .background(
+                    Color(.tertiarySystemFill),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+            }
+        }
+        .padding(16)
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+    }
+
+    // MARK: - Save
 
     private func save() {
         guard let amount = Double(amountText), let category = selectedCategory else { return }
@@ -142,7 +230,6 @@ struct TransactionFormView: View {
                 createdAt: existing.createdAt
             )
         } else {
-            // id: 0 is a placeholder — the DB assigns the real auto-increment id on insert
             transaction = Transaction(
                 id: 0,
                 amount: amount,
@@ -161,6 +248,8 @@ struct TransactionFormView: View {
     }
 }
 
+// MARK: - Category Chip
+
 struct CategoryChip: View {
     let category: TransactionCategory
     let isSelected: Bool
@@ -168,10 +257,14 @@ struct CategoryChip: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? Color(hex: category.colorHex) : Color(.systemGray5))
+                        .fill(
+                            isSelected
+                                ? Color(hex: category.colorHex)
+                                : Color(hex: category.colorHex).opacity(0.12)
+                        )
                         .frame(width: 48, height: 48)
                     Image(systemName: category.icon)
                         .foregroundStyle(isSelected ? .white : Color(hex: category.colorHex))

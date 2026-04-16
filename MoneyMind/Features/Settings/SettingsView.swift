@@ -9,6 +9,38 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 Section {
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            Color(hex: "#1A1A2E"),
+                                            Color(hex: "#0F3460"),
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 72, height: 72)
+                            Image(systemName: "banknote.fill")
+                                .font(.system(size: 28))
+                                .foregroundStyle(.white)
+                        }
+
+                        Text("MoneyMind")
+                            .font(.title3.weight(.bold))
+                        Text("Track smarter, spend wiser")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                }
+
+                Section("Preferences") {
                     Button {
                         showCurrencyPicker = true
                     } label: {
@@ -23,19 +55,15 @@ struct SettingsView: View {
                                 .font(.caption)
                         }
                     }
-                } header: {
-                    Text("Preferences")
                 }
 
-                Section {
+                Section("About") {
                     HStack {
                         Label("Version", systemImage: "info.circle.fill")
                         Spacer()
                         Text("1.0.0")
                             .foregroundStyle(.secondary)
                     }
-                } header: {
-                    Text("About")
                 }
             }
             .navigationTitle("Settings")
