@@ -7,7 +7,7 @@ struct TransactionsView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                balanceHeader
+                balanceCard
                     .padding(.horizontal)
                     .padding(.top, 8)
                     .padding(.bottom, 12)
@@ -24,13 +24,11 @@ struct TransactionsView: View {
             .searchable(text: $viewModel.searchText, prompt: "Search transactions")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
+                    Button("Add Transaction", systemImage: "plus.circle.fill") {
                         viewModel.isShowingAddSheet = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .symbolRenderingMode(.hierarchical)
                     }
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
                 }
             }
             .sheet(isPresented: $viewModel.isShowingAddSheet) {
@@ -56,73 +54,84 @@ struct TransactionsView: View {
         }
     }
 
-    // MARK: - Balance Header
+    // MARK: - Balance Card
 
-    private var balanceHeader: some View {
-        VStack(spacing: 16) {
+    private var balanceCard: some View {
+        let net = viewModel.totalIncome - viewModel.totalExpense
+        let netColor: Color = net > 0 ? .green : (net < 0 ? .red : .primary)
+
+        return VStack(spacing: 14) {
             VStack(spacing: 4) {
-                Text("Balance")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.7))
-                Text(CurrencyFormatter.format(
-                    viewModel.totalIncome - viewModel.totalExpense,
-                    currencyCode: currencyCode
-                ))
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .contentTransition(.numericText())
+                Text("Net Balance")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
+
+                Text(netFormatted(net))
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .foregroundStyle(netColor)
+                    .contentTransition(.numericText(value: net))
+                    .animation(.spring(duration: 0.4), value: net)
             }
+
+            Rectangle()
+                .fill(Color(.separator))
+                .frame(height: 0.5)
 
             HStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(.green)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Income")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.6))
-                        Text(CurrencyFormatter.format(viewModel.totalIncome, currencyCode: currencyCode))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                incomeExpenseColumn(
+                    title: "Income",
+                    amount: viewModel.totalIncome,
+                    icon: "arrow.down.circle.fill",
+                    color: .green
+                )
 
                 Rectangle()
-                    .fill(.white.opacity(0.2))
-                    .frame(width: 1, height: 36)
+                    .fill(Color(.separator))
+                    .frame(width: 0.5, height: 44)
 
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(Color(hex: "#FF6B6B"))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Expense")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.6))
-                        Text(CurrencyFormatter.format(viewModel.totalExpense, currencyCode: currencyCode))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 16)
+                incomeExpenseColumn(
+                    title: "Expense",
+                    amount: viewModel.totalExpense,
+                    icon: "arrow.up.circle.fill",
+                    color: .red
+                )
             }
         }
-        .padding(20)
+        .padding(18)
         .background(
-            LinearGradient(
-                colors: [Color(hex: "#1A1A2E"), Color(hex: "#16213E"), Color(hex: "#0F3460")],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            Color(.secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func incomeExpenseColumn(
+        title: String,
+        amount: Double,
+        icon: String,
+        color: Color
+    ) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+                .font(.system(size: 24))
+                .frame(width: 28)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(CurrencyFormatter.format(amount, currencyCode: currencyCode))
+                    .font(.subheadline.weight(.semibold))
+                    .fontDesign(.rounded)
+                    .foregroundStyle(color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 6)
     }
 
     // MARK: - Filters
@@ -186,18 +195,28 @@ struct TransactionsView: View {
                             }
                         }
                     } header: {
-                        HStack {
-                            Text(date)
-                            Spacer()
-                            let net = dayNet(for: transactions)
-                            Text(dayNetFormatted(net))
-                                .foregroundStyle(net >= 0 ? .green : .red)
-                        }
+                        sectionHeader(date: date, transactions: transactions)
                     }
                 }
             }
             .listStyle(.insetGrouped)
         }
+    }
+
+    // MARK: - Section Header
+
+    private func sectionHeader(date: String, transactions: [Transaction]) -> some View {
+        let net = dayNet(for: transactions)
+        return HStack {
+            Text(relativeDate(from: date))
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(dayNetFormatted(net))
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(net >= 0 ? .green : .red)
+        }
+        .textCase(nil)
     }
 
     // MARK: - Helpers
@@ -209,6 +228,28 @@ struct TransactionsView: View {
     private func dayNetFormatted(_ net: Double) -> String {
         let prefix = net >= 0 ? "+" : "-"
         return "\(prefix)\(CurrencyFormatter.format(abs(net), currencyCode: currencyCode))"
+    }
+
+    private func netFormatted(_ net: Double) -> String {
+        let prefix = net > 0 ? "+" : (net < 0 ? "-" : "")
+        return "\(prefix)\(CurrencyFormatter.format(abs(net), currencyCode: currencyCode))"
+    }
+
+    private func relativeDate(from rawDate: String) -> String {
+        let parser = DateFormatter()
+        parser.dateStyle = .medium
+        parser.timeStyle = .none
+        guard let date = parser.date(from: rawDate) else { return rawDate }
+
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return "Today" }
+        if calendar.isDateInYesterday(date) { return "Yesterday" }
+
+        let display = DateFormatter()
+        let thisYear = calendar.component(.year, from: Date())
+        let dateYear = calendar.component(.year, from: date)
+        display.dateFormat = thisYear == dateYear ? "EEE, MMM d" : "EEE, MMM d, yyyy"
+        return display.string(from: date)
     }
 }
 
@@ -247,14 +288,14 @@ struct TransactionRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(categoryColor.opacity(0.12))
-                    .frame(width: 46, height: 46)
+                    .fill(categoryColor.opacity(0.15))
+                    .frame(width: 48, height: 48)
                 Image(systemName: transaction.categoryIcon)
                     .foregroundStyle(categoryColor)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 19, weight: .semibold))
             }
 
             VStack(alignment: .leading, spacing: 3) {

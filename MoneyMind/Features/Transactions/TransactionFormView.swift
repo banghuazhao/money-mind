@@ -118,6 +118,8 @@ struct TransactionFormView: View {
 
     // MARK: - Amount
 
+    private var typeColor: Color { type == .expense ? .red : .green }
+
     private var amountSection: some View {
         VStack(spacing: 8) {
             Text(currencyCode)
@@ -128,15 +130,21 @@ struct TransactionFormView: View {
                 .keyboardType(.decimalPad)
                 .font(.system(size: 48, weight: .bold, design: .rounded))
                 .multilineTextAlignment(.center)
-                .foregroundStyle(type == .expense ? .red : .green)
+                .foregroundStyle(typeColor)
                 .minimumScaleFactor(0.5)
         }
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)
         .background(
-            Color(.secondarySystemGroupedBackground),
-            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+            ZStack {
+                Color(.secondarySystemGroupedBackground)
+                typeColor.opacity(0.05)
+            }
         )
+        .clipShape(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+        .animation(.spring(duration: 0.3), value: type)
     }
 
     // MARK: - Category
@@ -191,9 +199,9 @@ struct TransactionFormView: View {
                     )
 
                 HStack {
-                    Text("Date")
+                    Text("Date & Time")
                     Spacer()
-                    DatePicker("", selection: $date, displayedComponents: [.date])
+                    DatePicker("", selection: $date, displayedComponents: [.date, .hourAndMinute])
                         .labelsHidden()
                 }
                 .padding(12)
