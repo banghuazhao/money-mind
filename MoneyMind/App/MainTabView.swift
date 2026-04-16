@@ -7,7 +7,11 @@ struct MainTabView: View {
                 TransactionsView()
             }
 
-            Tab("Report", systemImage: "chart.pie.fill") {
+            Tab("Budgets", systemImage: "chart.pie.fill") {
+                BudgetsView()
+            }
+
+            Tab("Report", systemImage: "chart.bar.xaxis") {
                 ReportView()
             }
 

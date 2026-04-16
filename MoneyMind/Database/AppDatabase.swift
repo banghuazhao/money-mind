@@ -78,5 +78,15 @@ private func migrate(_ db: DatabaseQueue) throws {
         }
     }
 
+    migrator.registerMigration("v2_budgets") { db in
+        try db.create(table: "budgets", ifNotExists: true) { t in
+            t.autoIncrementedPrimaryKey("id")
+            t.column("categoryId", .integer).notNull().unique()
+                .references("categories", onDelete: .cascade)
+            t.column("amount", .double).notNull()
+            t.column("createdAt", .text).notNull()
+        }
+    }
+
     try migrator.migrate(db)
 }
