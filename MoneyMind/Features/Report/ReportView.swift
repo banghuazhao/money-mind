@@ -10,7 +10,7 @@ struct ReportView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     periodPicker
-                    balanceSummarySection
+                    balanceTrendCard
                     trendChartSection
                     categoryBreakdownSection
                 }
@@ -35,67 +35,144 @@ struct ReportView: View {
         .padding(.top, 4)
     }
 
-    // MARK: - Balance Summary
+    // MARK: - Balance Trend Card (replaces static overview)
 
-    private var balanceSummarySection: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Text("Overview")
-                    .font(.headline)
+    private var balanceTrendCard: some View {
+        let isPositive = viewModel.balance >= 0
+        let accentColor: Color = isPositive ? .green : .red
+
+        return VStack(alignment: .leading, spacing: 14) {
+            // Header row: title + headline number
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Balance Trend")
+                        .font(.headline)
+                    Text(viewModel.selectedPeriod.rawValue)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
-            }
-
-            VStack(spacing: 4) {
-                Text(viewModel.selectedPeriod.rawValue.uppercased())
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .tracking(1.0)
-                Text("Net Balance")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(CurrencyFormatter.format(viewModel.balance, currencyCode: currencyCode))
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(viewModel.balance >= 0 ? .green : .red)
-                    .contentTransition(.numericText())
-                    .animation(.spring(duration: 0.4), value: viewModel.balance)
-                if viewModel.totalIncome > 0 {
-                    Text("Savings rate \(Int(viewModel.savingsRate))%")
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(CurrencyFormatter.format(abs(viewModel.balance), currencyCode: currencyCode))
+                        .font(.title3.weight(.bold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(accentColor)
+                        .contentTransition(.numericText())
+                        .animation(.spring(duration: 0.4), value: viewModel.balance)
+                    Text(isPositive ? "Net Positive" : "Net Negative")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .padding(.top, 2)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                (viewModel.balance >= 0 ? Color.green : Color.red).opacity(0.08),
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
 
-            HStack(spacing: 12) {
-                MetricCard(
+            // Line chart
+            if viewModel.netCurveData.count < 2 {
+                Text("Not enough data for this period yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
+            } else {
+                cumulativeLineChart(accentColor: accentColor)
+            }
+
+            // Compact stats row
+            HStack(spacing: 0) {
+                compactStat(
                     title: "Income",
                     value: CurrencyFormatter.format(viewModel.totalIncome, currencyCode: currencyCode),
-                    color: .green,
-                    icon: "arrow.down.circle.fill"
+                    color: .green
                 )
-                MetricCard(
+                Rectangle().fill(Color(.separator)).frame(width: 0.5, height: 32)
+                compactStat(
                     title: "Expense",
                     value: CurrencyFormatter.format(viewModel.totalExpense, currencyCode: currencyCode),
-                    color: .red,
-                    icon: "arrow.up.circle.fill"
+                    color: .red
                 )
-                MetricCard(
-                    title: "Saved",
-                    value: "\(Int(viewModel.savingsRate))%",
-                    color: .blue,
-                    icon: "chart.line.uptrend.xyaxis"
-                )
+                if viewModel.totalIncome > 0 {
+                    Rectangle().fill(Color(.separator)).frame(width: 0.5, height: 32)
+                    compactStat(
+                        title: "Saved",
+                        value: "\(Int(viewModel.savingsRate))%",
+                        color: .blue
+                    )
+                }
             }
         }
+        .padding(16)
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
     }
 
-    // MARK: - Trend Chart
+    @ViewBuilder
+    private func cumulativeLineChart(accentColor: Color) -> some View {
+        let unit: Calendar.Component = {
+            switch viewModel.selectedPeriod {
+            case .week, .month: return .day
+            case .year, .all: return .month
+            }
+        }()
+
+        Chart(viewModel.netCurveData) { point in
+            AreaMark(
+                x: .value("Date", point.date, unit: unit),
+                yStart: .value("Zero", 0),
+                yEnd: .value("Net", point.cumulativeNet)
+            )
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [accentColor.opacity(0.25), accentColor.opacity(0.04)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .interpolationMethod(.monotone)
+
+            LineMark(
+                x: .value("Date", point.date, unit: unit),
+                y: .value("Net", point.cumulativeNet)
+            )
+            .foregroundStyle(accentColor)
+            .lineStyle(StrokeStyle(lineWidth: 2))
+            .interpolationMethod(.monotone)
+        }
+        .frame(height: 130)
+        .chartYAxis {
+            AxisMarks(position: .leading) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
+                    .foregroundStyle(Color(.systemGray5))
+                AxisValueLabel()
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .chartXAxis {
+            AxisMarks { _ in
+                AxisValueLabel()
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .animation(.spring(duration: 0.4), value: viewModel.selectedPeriod)
+    }
+
+    private func compactStat(title: String, value: String, color: Color) -> some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .fontDesign(.rounded)
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Trend Bar Chart
 
     private var trendChartSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -189,10 +266,7 @@ struct ReportView: View {
                     .padding(.vertical, 4)
 
                 ForEach(viewModel.categoryBreakdown) { item in
-                    CategoryBreakdownRow(
-                        item: item,
-                        currencyCode: currencyCode
-                    )
+                    CategoryBreakdownRow(item: item, currencyCode: currencyCode)
                 }
             }
         }
@@ -237,41 +311,6 @@ struct ReportView: View {
     }
 }
 
-// MARK: - Metric Card
-
-struct MetricCard: View {
-    let title: String
-    let value: String
-    let color: Color
-    let icon: String
-    var fullWidth: Bool = false
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .foregroundStyle(color)
-                .font(.subheadline)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(value)
-                    .font(.subheadline.weight(.bold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(color)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-            }
-            if fullWidth { Spacer() }
-        }
-        .frame(maxWidth: fullWidth ? .infinity : nil, alignment: .leading)
-        .padding(12)
-        .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .frame(maxWidth: .infinity)
-    }
-}
-
 // MARK: - Category Breakdown Row
 
 struct CategoryBreakdownRow: View {
@@ -301,10 +340,7 @@ struct CategoryBreakdownRow: View {
                             .frame(height: 6)
                         Capsule()
                             .fill(Color(hex: item.categoryColorHex).gradient)
-                            .frame(
-                                width: geo.size.width * animatedPercentage / 100,
-                                height: 6
-                            )
+                            .frame(width: geo.size.width * animatedPercentage / 100, height: 6)
                     }
                 }
                 .frame(height: 6)

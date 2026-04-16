@@ -6,12 +6,14 @@ import Dependencies
 enum TransactionPeriod: String, CaseIterable {
     case week = "Week"
     case month = "Month"
+    case year = "Year"
     case all = "All"
 
     var displayTitle: String {
         switch self {
         case .week: "This Week"
         case .month: "This Month"
+        case .year: "This Year"
         case .all: "All Time"
         }
     }
@@ -50,6 +52,8 @@ final class TransactionsViewModel {
                 return calendar.isDate(t.date, equalTo: now, toGranularity: .weekOfYear)
             case .month:
                 return calendar.isDate(t.date, equalTo: now, toGranularity: .month)
+            case .year:
+                return calendar.isDate(t.date, equalTo: now, toGranularity: .year)
             case .all:
                 return true
             }

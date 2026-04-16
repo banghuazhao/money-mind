@@ -20,6 +20,12 @@ struct TrendPoint: Identifiable {
     let expense: Double
 }
 
+struct BalancePoint: Identifiable {
+    let id = UUID()
+    let date: Date
+    let cumulativeNet: Double
+}
+
 enum ReportPeriod: String, CaseIterable {
     case week = "Week"
     case month = "Month"
@@ -67,6 +73,78 @@ final class ReportViewModel {
     var savingsRate: Double {
         guard totalIncome > 0 else { return 0 }
         return max(0, (totalIncome - totalExpense) / totalIncome * 100)
+    }
+
+    // Cumulative net balance over time within the selected period.
+    // Rising = income outpacing expense; falling = overspending.
+    var netCurveData: [BalancePoint] {
+        let calendar = Calendar.current
+        let now = Date()
+        var result: [BalancePoint] = []
+        var running: Double = 0
+
+        func net(_ txns: [Transaction]) -> Double {
+            txns.reduce(0) { $0 + ($1.type == .income ? $1.amount : -$1.amount) }
+        }
+
+        switch selectedPeriod {
+
+        case .week:
+            for offset in stride(from: -6, through: 0, by: 1) {
+                guard let date = calendar.date(byAdding: .day, value: offset, to: now) else { continue }
+                let dc = calendar.dateComponents([.year, .month, .day], from: date)
+                running += net(filteredTransactions.filter {
+                    let c = calendar.dateComponents([.year, .month, .day], from: $0.date)
+                    return c.year == dc.year && c.month == dc.month && c.day == dc.day
+                })
+                result.append(BalancePoint(date: date, cumulativeNet: running))
+            }
+
+        case .month:
+            let todayDay = calendar.component(.day, from: now)
+            guard let monthStart = calendar.date(
+                from: calendar.dateComponents([.year, .month], from: now)
+            ) else { return [] }
+            for day in 1...max(1, todayDay) {
+                guard let date = calendar.date(bySetting: .day, value: day, of: monthStart) else { continue }
+                let dc = calendar.dateComponents([.year, .month, .day], from: date)
+                running += net(filteredTransactions.filter {
+                    let c = calendar.dateComponents([.year, .month, .day], from: $0.date)
+                    return c.year == dc.year && c.month == dc.month && c.day == dc.day
+                })
+                result.append(BalancePoint(date: date, cumulativeNet: running))
+            }
+
+        case .year:
+            let yr = calendar.component(.year, from: now)
+            let mo = calendar.component(.month, from: now)
+            for month in 1...max(1, mo) {
+                var dc = DateComponents(); dc.year = yr; dc.month = month; dc.day = 1
+                guard let date = calendar.date(from: dc) else { continue }
+                running += net(filteredTransactions.filter {
+                    calendar.dateComponents([.month], from: $0.date).month == month
+                })
+                result.append(BalancePoint(date: date, cumulativeNet: running))
+            }
+
+        case .all:
+            let grouped = Dictionary(grouping: filteredTransactions) { t -> String in
+                let c = calendar.dateComponents([.year, .month], from: t.date)
+                return String(format: "%04d-%02d", c.year ?? 0, c.month ?? 0)
+            }
+            for key in grouped.keys.sorted() {
+                running += net(grouped[key] ?? [])
+                let parts = key.split(separator: "-")
+                if parts.count == 2, let yr = Int(parts[0]), let mo = Int(parts[1]) {
+                    var dc = DateComponents(); dc.year = yr; dc.month = mo; dc.day = 1
+                    if let date = calendar.date(from: dc) {
+                        result.append(BalancePoint(date: date, cumulativeNet: running))
+                    }
+                }
+            }
+        }
+
+        return result
     }
 
     var categoryBreakdown: [CategorySpending] {
