@@ -13,9 +13,9 @@ struct CategorySpending: Identifiable {
     let percentage: Double
 }
 
-struct MonthlyData: Identifiable {
+struct TrendPoint: Identifiable {
     let id = UUID()
-    let month: String
+    let label: String
     let income: Double
     let expense: Double
 }
@@ -64,6 +64,11 @@ final class ReportViewModel {
 
     var balance: Double { totalIncome - totalExpense }
 
+    var savingsRate: Double {
+        guard totalIncome > 0 else { return 0 }
+        return max(0, (totalIncome - totalExpense) / totalIncome * 100)
+    }
+
     var categoryBreakdown: [CategorySpending] {
         let relevant = filteredTransactions.filter { $0.type == selectedType }
         let total = relevant.reduce(0) { $0 + $1.amount }
@@ -85,29 +90,102 @@ final class ReportViewModel {
         .sorted { $0.amount > $1.amount }
     }
 
-    var monthlyData: [MonthlyData] {
+    var trendSectionTitle: String {
+        switch selectedPeriod {
+        case .week: return "Daily Trend (7 Days)"
+        case .month: return "Weekly Trend (4 Weeks)"
+        case .year: return "Monthly Trend (12 Months)"
+        case .all: return "6-Month Trend"
+        }
+    }
+
+    // Chart data adapts to the selected period
+    var trendData: [TrendPoint] {
         let calendar = Calendar.current
         let now = Date()
-        var result: [MonthlyData] = []
+        var result: [TrendPoint] = []
 
-        for monthOffset in stride(from: -5, through: 0, by: 1) {
-            guard let date = calendar.date(byAdding: .month, value: monthOffset, to: now) else { continue }
-            let components = calendar.dateComponents([.year, .month], from: date)
+        switch selectedPeriod {
 
-            let monthTransactions = transactions.filter { t in
-                let tComponents = calendar.dateComponents([.year, .month], from: t.date)
-                return tComponents.year == components.year && tComponents.month == components.month
+        case .week:
+            // Last 7 days, daily bars
+            for dayOffset in stride(from: -6, through: 0, by: 1) {
+                guard let date = calendar.date(byAdding: .day, value: dayOffset, to: now) else { continue }
+                let dayComponents = calendar.dateComponents([.year, .month, .day], from: date)
+
+                let dayTxns = transactions.filter { t in
+                    let c = calendar.dateComponents([.year, .month, .day], from: t.date)
+                    return c.year == dayComponents.year &&
+                           c.month == dayComponents.month &&
+                           c.day == dayComponents.day
+                }
+
+                let income = dayTxns.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
+                let expense = dayTxns.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+
+                let formatter = DateFormatter()
+                formatter.dateFormat = "EEE"
+                result.append(TrendPoint(label: formatter.string(from: date), income: income, expense: expense))
             }
 
-            let income = monthTransactions.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
-            let expense = monthTransactions.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+        case .month:
+            // Last 4 weeks, weekly bars
+            for weekOffset in stride(from: -3, through: 0, by: 1) {
+                guard let weekAnchor = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: now) else { continue }
+                let weekStart = calendar.dateInterval(of: .weekOfYear, for: weekAnchor)?.start ?? weekAnchor
+                let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) ?? weekAnchor
 
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM"
-            let monthName = formatter.string(from: date)
+                let weekTxns = transactions.filter { t in
+                    t.date >= weekStart && t.date <= Calendar.current.date(byAdding: .day, value: 1, to: weekEnd)!
+                }
 
-            result.append(MonthlyData(month: monthName, income: income, expense: expense))
+                let income = weekTxns.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
+                let expense = weekTxns.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+
+                let formatter = DateFormatter()
+                formatter.dateFormat = "MMM d"
+                result.append(TrendPoint(label: formatter.string(from: weekStart), income: income, expense: expense))
+            }
+
+        case .year:
+            // Last 12 months
+            for monthOffset in stride(from: -11, through: 0, by: 1) {
+                guard let date = calendar.date(byAdding: .month, value: monthOffset, to: now) else { continue }
+                let components = calendar.dateComponents([.year, .month], from: date)
+
+                let monthTxns = transactions.filter { t in
+                    let c = calendar.dateComponents([.year, .month], from: t.date)
+                    return c.year == components.year && c.month == components.month
+                }
+
+                let income = monthTxns.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
+                let expense = monthTxns.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+
+                let formatter = DateFormatter()
+                formatter.dateFormat = "MMM"
+                result.append(TrendPoint(label: formatter.string(from: date), income: income, expense: expense))
+            }
+
+        case .all:
+            // Last 6 months
+            for monthOffset in stride(from: -5, through: 0, by: 1) {
+                guard let date = calendar.date(byAdding: .month, value: monthOffset, to: now) else { continue }
+                let components = calendar.dateComponents([.year, .month], from: date)
+
+                let monthTxns = transactions.filter { t in
+                    let c = calendar.dateComponents([.year, .month], from: t.date)
+                    return c.year == components.year && c.month == components.month
+                }
+
+                let income = monthTxns.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
+                let expense = monthTxns.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+
+                let formatter = DateFormatter()
+                formatter.dateFormat = "MMM"
+                result.append(TrendPoint(label: formatter.string(from: date), income: income, expense: expense))
+            }
         }
+
         return result
     }
 }

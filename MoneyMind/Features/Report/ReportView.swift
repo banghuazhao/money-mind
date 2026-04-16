@@ -11,7 +11,7 @@ struct ReportView: View {
                 VStack(spacing: 20) {
                     periodPicker
                     balanceSummarySection
-                    monthlyBarChartSection
+                    trendChartSection
                     categoryBreakdownSection
                 }
                 .padding(.horizontal)
@@ -46,6 +46,10 @@ struct ReportView: View {
             }
 
             VStack(spacing: 4) {
+                Text(viewModel.selectedPeriod.rawValue.uppercased())
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .tracking(1.0)
                 Text("Net Balance")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -53,6 +57,13 @@ struct ReportView: View {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(viewModel.balance >= 0 ? .green : .red)
                     .contentTransition(.numericText())
+                    .animation(.spring(duration: 0.4), value: viewModel.balance)
+                if viewModel.totalIncome > 0 {
+                    Text("Savings rate \(Int(viewModel.savingsRate))%")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 2)
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
@@ -68,28 +79,33 @@ struct ReportView: View {
                     color: .green,
                     icon: "arrow.down.circle.fill"
                 )
-
                 MetricCard(
                     title: "Expense",
                     value: CurrencyFormatter.format(viewModel.totalExpense, currencyCode: currencyCode),
                     color: .red,
                     icon: "arrow.up.circle.fill"
                 )
+                MetricCard(
+                    title: "Saved",
+                    value: "\(Int(viewModel.savingsRate))%",
+                    color: .blue,
+                    icon: "chart.line.uptrend.xyaxis"
+                )
             }
         }
     }
 
-    // MARK: - Monthly Bar Chart
+    // MARK: - Trend Chart
 
-    private var monthlyBarChartSection: some View {
+    private var trendChartSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("6-Month Trend")
+            Text(viewModel.trendSectionTitle)
                 .font(.headline)
 
             Chart {
-                ForEach(viewModel.monthlyData) { data in
+                ForEach(viewModel.trendData) { data in
                     BarMark(
-                        x: .value("Month", data.month),
+                        x: .value("Period", data.label),
                         y: .value("Income", data.income),
                         width: .ratio(0.35)
                     )
@@ -97,7 +113,7 @@ struct ReportView: View {
                     .position(by: .value("Type", "Income"))
 
                     BarMark(
-                        x: .value("Month", data.month),
+                        x: .value("Period", data.label),
                         y: .value("Expense", data.expense),
                         width: .ratio(0.35)
                     )
@@ -123,6 +139,7 @@ struct ReportView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .animation(.spring(duration: 0.4), value: viewModel.selectedPeriod)
 
             HStack(spacing: 16) {
                 HStack(spacing: 6) {
@@ -216,6 +233,7 @@ struct ReportView: View {
             }
             .padding(8)
         }
+        .animation(.spring(duration: 0.4), value: viewModel.selectedPeriod)
     }
 }
 
@@ -229,10 +247,10 @@ struct MetricCard: View {
     var fullWidth: Bool = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
                 .foregroundStyle(color)
-                .font(.title3)
+                .font(.subheadline)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -243,14 +261,14 @@ struct MetricCard: View {
                     .fontDesign(.rounded)
                     .foregroundStyle(color)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.6)
             }
             if fullWidth { Spacer() }
         }
         .frame(maxWidth: fullWidth ? .infinity : nil, alignment: .leading)
-        .padding(14)
+        .padding(12)
         .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .frame(maxWidth: fullWidth ? .infinity : .infinity)
+        .frame(maxWidth: .infinity)
     }
 }
 

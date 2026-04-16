@@ -7,9 +7,13 @@ struct TransactionsView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                balanceCard
+                periodPicker
                     .padding(.horizontal)
                     .padding(.top, 8)
+                    .padding(.bottom, 10)
+
+                balanceCard
+                    .padding(.horizontal)
                     .padding(.bottom, 12)
 
                 filterPicker
@@ -54,6 +58,18 @@ struct TransactionsView: View {
         }
     }
 
+    // MARK: - Period Picker
+
+    private var periodPicker: some View {
+        Picker("Period", selection: $viewModel.selectedPeriod) {
+            ForEach(TransactionPeriod.allCases, id: \.self) { period in
+                Text(period.rawValue).tag(period)
+            }
+        }
+        .pickerStyle(.segmented)
+        .animation(.spring(duration: 0.25), value: viewModel.selectedPeriod)
+    }
+
     // MARK: - Balance Card
 
     private var balanceCard: some View {
@@ -62,11 +78,15 @@ struct TransactionsView: View {
 
         return VStack(spacing: 14) {
             VStack(spacing: 4) {
+                Text(viewModel.selectedPeriod.displayTitle.uppercased())
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .tracking(1.0)
+
                 Text("Net Balance")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                    .tracking(0.8)
+                    .tracking(0.5)
 
                 Text(netFormatted(net))
                     .font(.system(size: 36, weight: .bold, design: .rounded))
@@ -157,7 +177,7 @@ struct TransactionsView: View {
     private var transactionList: some View {
         if viewModel.filteredTransactions.isEmpty {
             ContentUnavailableView(
-                viewModel.searchText.isEmpty ? "No Transactions" : "No Results",
+                emptyTitle,
                 systemImage: viewModel.searchText.isEmpty ? "tray" : "magnifyingglass",
                 description: Text(
                     viewModel.searchText.isEmpty
@@ -200,6 +220,7 @@ struct TransactionsView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .animation(.spring(duration: 0.3), value: viewModel.selectedPeriod)
         }
     }
 
@@ -220,6 +241,15 @@ struct TransactionsView: View {
     }
 
     // MARK: - Helpers
+
+    private var emptyTitle: String {
+        guard viewModel.searchText.isEmpty else { return "No Results" }
+        switch viewModel.selectedPeriod {
+        case .week: return "No Transactions This Week"
+        case .month: return "No Transactions This Month"
+        case .all: return "No Transactions"
+        }
+    }
 
     private func dayNet(for transactions: [Transaction]) -> Double {
         transactions.reduce(0) { $0 + ($1.type == .income ? $1.amount : -$1.amount) }

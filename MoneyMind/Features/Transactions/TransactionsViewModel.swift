@@ -3,6 +3,20 @@ import Observation
 import SQLiteData
 import Dependencies
 
+enum TransactionPeriod: String, CaseIterable {
+    case week = "Week"
+    case month = "Month"
+    case all = "All"
+
+    var displayTitle: String {
+        switch self {
+        case .week: "This Week"
+        case .month: "This Month"
+        case .all: "All Time"
+        }
+    }
+}
+
 @Observable
 @MainActor
 final class TransactionsViewModel {
@@ -24,9 +38,27 @@ final class TransactionsViewModel {
     var errorMessage: String?
     var filterType: TransactionType? = nil
     var searchText: String = ""
+    var selectedPeriod: TransactionPeriod = .month
 
+    // Transactions filtered by period only (used for balance card totals)
+    var periodFilteredTransactions: [Transaction] {
+        let now = Date()
+        let calendar = Calendar.current
+        return transactions.filter { t in
+            switch selectedPeriod {
+            case .week:
+                return calendar.isDate(t.date, equalTo: now, toGranularity: .weekOfYear)
+            case .month:
+                return calendar.isDate(t.date, equalTo: now, toGranularity: .month)
+            case .all:
+                return true
+            }
+        }
+    }
+
+    // Transactions filtered by period + type + search (used for the list)
     var filteredTransactions: [Transaction] {
-        var result = transactions
+        var result = periodFilteredTransactions
         if let filter = filterType {
             result = result.filter { $0.type == filter }
         }
@@ -56,11 +88,11 @@ final class TransactionsViewModel {
     }
 
     var totalIncome: Double {
-        transactions.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
+        periodFilteredTransactions.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
     }
 
     var totalExpense: Double {
-        transactions.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
+        periodFilteredTransactions.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
     }
 
     func addTransaction(_ transaction: Transaction) {

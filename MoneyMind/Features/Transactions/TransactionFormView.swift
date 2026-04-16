@@ -120,18 +120,33 @@ struct TransactionFormView: View {
 
     private var typeColor: Color { type == .expense ? .red : .green }
 
-    private var amountSection: some View {
-        VStack(spacing: 8) {
-            Text(currencyCode)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
+    private var currencySymbol: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currencyCode
+        return formatter.currencySymbol
+    }
 
-            TextField("0.00", text: $amountText)
-                .keyboardType(.decimalPad)
-                .font(.system(size: 48, weight: .bold, design: .rounded))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(typeColor)
-                .minimumScaleFactor(0.5)
+    private var amountSection: some View {
+        VStack(spacing: 6) {
+            Text(currencyCode)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .tracking(1.0)
+
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(currencySymbol)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(typeColor.opacity(0.6))
+
+                TextField("0.00", text: $amountText)
+                    .keyboardType(.decimalPad)
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .multilineTextAlignment(.leading)
+                    .foregroundStyle(typeColor)
+                    .minimumScaleFactor(0.5)
+                    .fixedSize()
+            }
         }
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)

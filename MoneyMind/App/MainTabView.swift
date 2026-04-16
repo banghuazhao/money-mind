@@ -11,10 +11,6 @@ struct MainTabView: View {
                 ReportView()
             }
 
-            Tab("Categories", systemImage: "tag.fill") {
-                CategoriesView()
-            }
-
             Tab("Settings", systemImage: "gearshape.fill") {
                 SettingsView()
             }

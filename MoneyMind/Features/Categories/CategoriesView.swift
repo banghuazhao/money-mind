@@ -3,6 +3,7 @@ import SwiftUI
 struct CategoriesView: View {
     @State private var viewModel = CategoriesViewModel()
     @State private var selectedType: TransactionType = .expense
+    @State private var isEditMode = false
 
     var body: some View {
         NavigationStack {
@@ -15,6 +16,11 @@ struct CategoriesView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.vertical, 12)
+                .onChange(of: selectedType) { _, _ in
+                    if isEditMode {
+                        withAnimation { isEditMode = false }
+                    }
+                }
 
                 categoryGrid
             }
@@ -28,6 +34,17 @@ struct CategoriesView: View {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
                             .symbolRenderingMode(.hierarchical)
+                    }
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    let filtered = viewModel.categoriesForType(selectedType)
+                    if !filtered.isEmpty {
+                        Button(isEditMode ? "Done" : "Edit") {
+                            withAnimation(.spring(duration: 0.3)) {
+                                isEditMode.toggle()
+                            }
+                        }
+                        .fontWeight(isEditMode ? .semibold : .regular)
                     }
                 }
             }
@@ -76,23 +93,27 @@ struct CategoriesView: View {
                     spacing: 12
                 ) {
                     ForEach(filtered) { category in
-                        CategoryCard(category: category)
-                            .onTapGesture {
+                        CategoryCard(category: category, isEditMode: isEditMode) {
+                            if !isEditMode {
                                 viewModel.editingCategory = category
                             }
-                            .contextMenu {
-                                Button {
-                                    viewModel.editingCategory = category
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-                                Button(role: .destructive) {
-                                    viewModel.categoryToDelete = category
-                                    viewModel.showDeleteAlert = true
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+                        } onDelete: {
+                            viewModel.categoryToDelete = category
+                            viewModel.showDeleteAlert = true
+                        }
+                        .contextMenu {
+                            Button {
+                                viewModel.editingCategory = category
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
                             }
+                            Button(role: .destructive) {
+                                viewModel.categoryToDelete = category
+                                viewModel.showDeleteAlert = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
                 .padding()
@@ -105,30 +126,52 @@ struct CategoriesView: View {
 
 struct CategoryCard: View {
     let category: TransactionCategory
+    var isEditMode: Bool = false
+    let onTap: () -> Void
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(Color(hex: category.colorHex).opacity(0.15))
-                    .frame(width: 48, height: 48)
-                Image(systemName: category.icon)
-                    .foregroundStyle(Color(hex: category.colorHex))
-                    .font(.system(size: 20, weight: .semibold))
-            }
+        Button(action: onTap) {
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color(hex: category.colorHex).opacity(0.15))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: category.icon)
+                        .foregroundStyle(Color(hex: category.colorHex))
+                        .font(.system(size: 20, weight: .semibold))
+                }
 
-            Text(category.name)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
+                Text(category.name)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .padding(.horizontal, 8)
+            .background(
+                Color(.secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay(alignment: .topLeading) {
+                if isEditMode {
+                    Button {
+                        onDelete?()
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .foregroundStyle(.red)
+                            .font(.system(size: 20))
+                            .background(Circle().fill(Color(.secondarySystemGroupedBackground)))
+                    }
+                    .offset(x: -4, y: -4)
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .padding(.horizontal, 8)
-        .background(
-            Color(.secondarySystemGroupedBackground),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-        )
+        .buttonStyle(.plain)
+        .scaleEffect(isEditMode ? 0.96 : 1.0)
+        .animation(.spring(duration: 0.25), value: isEditMode)
     }
 }
