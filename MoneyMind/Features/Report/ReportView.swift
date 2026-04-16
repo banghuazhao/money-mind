@@ -4,17 +4,16 @@ import Charts
 struct ReportView: View {
     @State private var viewModel = ReportViewModel()
     @AppStorage("currencyCode") private var currencyCode = "USD"
-    @State private var chartAngle: Double?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
                     periodSelector
-                    summaryCard
-                    categoryBreakdownSection
-                    trendChartSection
-                    balanceTrendCard
+                    compactSummaryCard
+                    compactCategorySection
+                    compactTrendSection
+                    compactBalanceTrendCard
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 24)
@@ -78,25 +77,30 @@ struct ReportView: View {
         .padding(.horizontal, 4)
     }
 
-    // MARK: - Summary Card
+    // MARK: - Compact Summary Card
 
-    private var summaryCard: some View {
+    private var compactSummaryCard: some View {
         let isPositive = viewModel.balance >= 0
 
-        return VStack(spacing: 16) {
-            // Balance headline
-            VStack(spacing: 2) {
+        return VStack(spacing: 14) {
+            sectionHeader(title: "Summary") {
+                ReportSummaryDetailView(viewModel: viewModel, currencyCode: currencyCode)
+            }
+
+            VStack(spacing: 4) {
                 Text(formatSigned(viewModel.balance))
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(isPositive ? .green : .red)
                     .contentTransition(.numericText(value: viewModel.balance))
                     .animation(.spring(duration: 0.4), value: viewModel.balance)
+                Text("Net Balance")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
 
             Rectangle().fill(Color(.separator)).frame(height: 0.5)
 
-            // Income / Expense row
             HStack(spacing: 0) {
                 incomeExpenseColumn(
                     title: "Income",
@@ -104,9 +108,7 @@ struct ReportView: View {
                     icon: "arrow.down.circle.fill",
                     color: .green
                 )
-
                 Rectangle().fill(Color(.separator)).frame(width: 0.5, height: 44)
-
                 incomeExpenseColumn(
                     title: "Expense",
                     amount: viewModel.totalExpense,
@@ -114,26 +116,311 @@ struct ReportView: View {
                     color: .red
                 )
             }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
 
-            Rectangle().fill(Color(.separator)).frame(height: 0.5)
+    // MARK: - Compact Category Section
 
-            // Stats row
-            HStack(spacing: 0) {
-                if viewModel.totalIncome > 0 {
-                    miniStat(title: "Saved", value: "\(Int(viewModel.savingsRate))%", color: .blue)
-                    Rectangle().fill(Color(.separator)).frame(width: 0.5, height: 28)
+    private var compactCategorySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                NavigationLink {
+                    CategoryBreakdownDetailView(viewModel: viewModel, currencyCode: currencyCode)
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("By Category")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
-                miniStat(
-                    title: "Daily Avg",
-                    value: CurrencyFormatter.format(viewModel.dailyAverage, currencyCode: currencyCode),
-                    color: .orange
-                )
-                Rectangle().fill(Color(.separator)).frame(width: 0.5, height: 28)
-                miniStat(title: "Transactions", value: "\(viewModel.transactionCount)", color: .purple)
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                Picker("Type", selection: $viewModel.selectedType) {
+                    ForEach(TransactionType.allCases, id: \.self) { type in
+                        Text(type.displayName).tag(type)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 160)
+            }
+
+            if viewModel.categoryBreakdown.isEmpty {
+                Text("No \(viewModel.selectedType.displayName.lowercased()) data for this period.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 60, alignment: .center)
+            } else {
+                compactDonutRow
+
+                Divider()
+
+                ForEach(viewModel.categoryBreakdown.prefix(3)) { item in
+                    compactCategoryRow(item)
+                }
+
+                if viewModel.categoryBreakdown.count > 3 {
+                    NavigationLink {
+                        CategoryBreakdownDetailView(viewModel: viewModel, currencyCode: currencyCode)
+                    } label: {
+                        HStack {
+                            Text("See all \(viewModel.categoryBreakdown.count) categories")
+                                .font(.subheadline)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.top, 2)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .animation(.spring(duration: 0.4), value: viewModel.selectedType)
+    }
+
+    private var compactDonutRow: some View {
+        let totalAmount = viewModel.selectedType == .expense ? viewModel.totalExpense : viewModel.totalIncome
+
+        return HStack(alignment: .center, spacing: 16) {
+            Chart(viewModel.categoryBreakdown) { item in
+                SectorMark(
+                    angle: .value("Amount", item.amount),
+                    innerRadius: .ratio(0.55),
+                    angularInset: 1.5
+                )
+                .foregroundStyle(Color(hex: item.categoryColorHex))
+                .cornerRadius(3)
+            }
+            .frame(width: 110, height: 110)
+            .chartLegend(.hidden)
+            .overlay {
+                VStack(spacing: 1) {
+                    Text(viewModel.selectedType == .expense ? "Spent" : "Earned")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(CurrencyFormatter.format(totalAmount, currencyCode: currencyCode))
+                        .font(.caption.weight(.bold))
+                        .fontDesign(.rounded)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                }
+                .padding(6)
+            }
+            .animation(.spring(duration: 0.4), value: viewModel.selectedPeriod)
+
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(viewModel.categoryBreakdown.prefix(5)) { item in
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color(hex: item.categoryColorHex))
+                            .frame(width: 7, height: 7)
+                        Text(item.categoryName)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text(String(format: "%.0f%%", item.percentage))
+                            .font(.caption2.weight(.semibold))
+                    }
+                }
+                if viewModel.categoryBreakdown.count > 5 {
+                    Text("+\(viewModel.categoryBreakdown.count - 5) more")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func compactCategoryRow(_ item: CategorySpending) -> some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: item.categoryColorHex).opacity(0.12))
+                    .frame(width: 32, height: 32)
+                Image(systemName: item.categoryIcon)
+                    .foregroundStyle(Color(hex: item.categoryColorHex))
+                    .font(.system(size: 13, weight: .semibold))
+            }
+
+            Text(item.categoryName)
+                .font(.subheadline)
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(CurrencyFormatter.format(item.amount, currencyCode: currencyCode))
+                    .font(.subheadline.weight(.semibold))
+                    .fontDesign(.rounded)
+                Text(String(format: "%.1f%%", item.percentage))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 3)
+    }
+
+    // MARK: - Compact Trend Section
+
+    private var compactTrendSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(title: viewModel.trendSectionTitle) {
+                TrendDetailView(viewModel: viewModel, currencyCode: currencyCode)
+            }
+
+            if viewModel.trendData.allSatisfy({ $0.income == 0 && $0.expense == 0 }) {
+                Text("Not enough data for this period.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 60, alignment: .center)
+            } else {
+                Chart {
+                    ForEach(viewModel.trendData) { data in
+                        BarMark(
+                            x: .value("Period", data.label),
+                            y: .value("Income", data.income),
+                            width: .ratio(0.35)
+                        )
+                        .foregroundStyle(Color.green.gradient)
+                        .position(by: .value("Type", "Income"))
+                        .cornerRadius(3)
+
+                        BarMark(
+                            x: .value("Period", data.label),
+                            y: .value("Expense", data.expense),
+                            width: .ratio(0.35)
+                        )
+                        .foregroundStyle(Color.red.gradient)
+                        .position(by: .value("Type", "Expense"))
+                        .cornerRadius(3)
+                    }
+                }
+                .frame(height: 110)
+                .chartLegend(.hidden)
+                .chartYAxis {
+                    AxisMarks(position: .leading) { _ in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
+                            .foregroundStyle(Color(.systemGray5))
+                        AxisValueLabel().font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks { _ in
+                        AxisValueLabel().font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                .animation(.spring(duration: 0.4), value: viewModel.periodOffset)
+
+                HStack(spacing: 16) {
+                    legendDot(color: .green, label: "Income")
+                    legendDot(color: .red, label: "Expense")
+                }
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    // MARK: - Compact Balance Trend Card
+
+    private var compactBalanceTrendCard: some View {
+        let accent: Color = viewModel.balance >= 0 ? .green : .red
+
+        return VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(title: "Balance Trend") {
+                BalanceTrendDetailView(viewModel: viewModel, currencyCode: currencyCode)
+            }
+
+            if viewModel.netCurveData.count < 2 {
+                Text("Not enough data for this period.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 60, alignment: .center)
+            } else {
+                compactLineChart(accent: accent)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func compactLineChart(accent: Color) -> some View {
+        let unit: Calendar.Component = {
+            switch viewModel.selectedPeriod {
+            case .week, .month: return .day
+            case .year, .all: return .month
+            }
+        }()
+
+        Chart(viewModel.netCurveData) { point in
+            AreaMark(
+                x: .value("Date", point.date, unit: unit),
+                yStart: .value("Zero", 0),
+                yEnd: .value("Net", point.cumulativeNet)
+            )
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [accent.opacity(0.22), accent.opacity(0.02)],
+                    startPoint: .top, endPoint: .bottom
+                )
+            )
+            .interpolationMethod(.monotone)
+
+            LineMark(
+                x: .value("Date", point.date, unit: unit),
+                y: .value("Net", point.cumulativeNet)
+            )
+            .foregroundStyle(accent)
+            .lineStyle(StrokeStyle(lineWidth: 2))
+            .interpolationMethod(.monotone)
+        }
+        .frame(height: 100)
+        .chartYAxis {
+            AxisMarks(position: .leading) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
+                    .foregroundStyle(Color(.systemGray5))
+                AxisValueLabel().font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .chartXAxis {
+            AxisMarks { _ in
+                AxisValueLabel().font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .animation(.spring(duration: 0.4), value: viewModel.periodOffset)
+    }
+
+    // MARK: - Shared Helpers
+
+    @ViewBuilder
+    private func sectionHeader<Destination: View>(
+        title: String,
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        NavigationLink(destination: destination()) {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private func incomeExpenseColumn(title: String, amount: Double, icon: String, color: Color) -> some View {
@@ -161,315 +448,12 @@ struct ReportView: View {
         .padding(.horizontal, 8)
     }
 
-    private func miniStat(title: String, value: String, color: Color) -> some View {
-        VStack(spacing: 2) {
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.caption.weight(.semibold))
-                .fontDesign(.rounded)
-                .foregroundStyle(color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    // MARK: - Category Breakdown
-
-    private var categoryBreakdownSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("By Category")
-                    .font(.headline)
-                Spacer()
-                Picker("Type", selection: $viewModel.selectedType) {
-                    ForEach(TransactionType.allCases, id: \.self) { type in
-                        Text(type.displayName).tag(type)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 160)
-            }
-
-            if viewModel.categoryBreakdown.isEmpty {
-                ContentUnavailableView {
-                    Label("No Data", systemImage: "chart.pie")
-                } description: {
-                    Text("No \(viewModel.selectedType.displayName.lowercased()) recorded for this period.")
-                }
-                .frame(minHeight: 200)
-            } else {
-                interactiveDonutChart
-                    .padding(.vertical, 4)
-
-                Divider()
-
-                categoryList
-            }
-        }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .animation(.spring(duration: 0.4), value: viewModel.selectedType)
-    }
-
-    // MARK: - Interactive Donut Chart
-
-    private var interactiveDonutChart: some View {
-        let totalAmount = viewModel.selectedType == .expense
-            ? viewModel.totalExpense
-            : viewModel.totalIncome
-        let selected = viewModel.selectedCategory
-
-        return Chart(viewModel.categoryBreakdown) { item in
-            SectorMark(
-                angle: .value("Amount", item.amount),
-                innerRadius: .ratio(0.58),
-                outerRadius: .ratio(item.categoryId == viewModel.selectedCategoryId ? 1.0 : 0.92),
-                angularInset: 2
-            )
-            .foregroundStyle(Color(hex: item.categoryColorHex))
-            .cornerRadius(5)
-            .opacity(viewModel.selectedCategoryId == nil || item.categoryId == viewModel.selectedCategoryId ? 1 : 0.4)
-        }
-        .chartAngleSelection(value: $chartAngle)
-        .onChange(of: chartAngle) { _, newValue in
-            withAnimation(.spring(duration: 0.3)) {
-                if let angle = newValue, let cat = viewModel.findCategory(byAngleValue: angle) {
-                    viewModel.selectedCategoryId = cat.categoryId == viewModel.selectedCategoryId ? nil : cat.categoryId
-                } else {
-                    viewModel.selectedCategoryId = nil
-                }
-            }
-        }
-        .frame(height: 220)
-        .chartLegend(.hidden)
-        .overlay {
-            VStack(spacing: 3) {
-                if let sel = selected {
-                    Image(systemName: sel.categoryIcon)
-                        .font(.title3)
-                        .foregroundStyle(Color(hex: sel.categoryColorHex))
-                    Text(sel.categoryName)
-                        .font(.caption.weight(.medium))
-                        .lineLimit(1)
-                    Text(CurrencyFormatter.format(sel.amount, currencyCode: currencyCode))
-                        .font(.callout.weight(.bold))
-                        .fontDesign(.rounded)
-                    Text(String(format: "%.1f%%", sel.percentage))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text(viewModel.selectedType == .expense ? "Total Spent" : "Total Earned")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(CurrencyFormatter.format(totalAmount, currencyCode: currencyCode))
-                        .font(.callout.weight(.bold))
-                        .fontDesign(.rounded)
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
-                }
-            }
-            .padding(12)
-            .contentTransition(.numericText())
-            .animation(.spring(duration: 0.3), value: viewModel.selectedCategoryId)
-        }
-        .animation(.spring(duration: 0.4), value: viewModel.selectedCategoryId)
-        .animation(.spring(duration: 0.4), value: viewModel.selectedPeriod)
-    }
-
-    // MARK: - Category List
-
-    private var categoryList: some View {
-        VStack(spacing: 2) {
-            ForEach(viewModel.categoryBreakdown) { item in
-                NavigationLink {
-                    CategoryDetailView(
-                        category: item,
-                        transactions: viewModel.transactionsForCategory(item.categoryId),
-                        periodLabel: viewModel.periodDisplayLabel,
-                        currencyCode: currencyCode
-                    )
-                } label: {
-                    CategoryBreakdownRow(
-                        item: item,
-                        isHighlighted: item.categoryId == viewModel.selectedCategoryId,
-                        currencyCode: currencyCode
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    // MARK: - Trend Bar Chart
-
-    private var trendChartSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(viewModel.trendSectionTitle)
-                .font(.headline)
-
-            if viewModel.trendData.allSatisfy({ $0.income == 0 && $0.expense == 0 }) {
-                ContentUnavailableView {
-                    Label("No Trend Data", systemImage: "chart.bar")
-                } description: {
-                    Text("Not enough data to show a trend.")
-                }
-                .frame(minHeight: 160)
-            } else {
-                Chart {
-                    ForEach(viewModel.trendData) { data in
-                        BarMark(
-                            x: .value("Period", data.label),
-                            y: .value("Income", data.income),
-                            width: .ratio(0.35)
-                        )
-                        .foregroundStyle(Color.green.gradient)
-                        .position(by: .value("Type", "Income"))
-                        .cornerRadius(3)
-
-                        BarMark(
-                            x: .value("Period", data.label),
-                            y: .value("Expense", data.expense),
-                            width: .ratio(0.35)
-                        )
-                        .foregroundStyle(Color.red.gradient)
-                        .position(by: .value("Type", "Expense"))
-                        .cornerRadius(3)
-                    }
-                }
-                .frame(height: 180)
-                .chartLegend(.hidden)
-                .chartYAxis {
-                    AxisMarks(position: .leading) { _ in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
-                            .foregroundStyle(Color(.systemGray5))
-                        AxisValueLabel()
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks { _ in
-                        AxisValueLabel()
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                HStack(spacing: 16) {
-                    legendDot(color: .green, label: "Income")
-                    legendDot(color: .red, label: "Expense")
-                }
-            }
-        }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .animation(.spring(duration: 0.4), value: viewModel.periodOffset)
-    }
-
     private func legendDot(color: Color, label: String) -> some View {
         HStack(spacing: 6) {
             Circle().fill(color.gradient).frame(width: 8, height: 8)
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
     }
-
-    // MARK: - Balance Trend Card
-
-    private var balanceTrendCard: some View {
-        let isPositive = viewModel.balance >= 0
-        let accent: Color = isPositive ? .green : .red
-
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Balance Trend")
-                    .font(.headline)
-                Spacer()
-                Text(formatSigned(viewModel.balance))
-                    .font(.subheadline.weight(.bold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(accent)
-                    .contentTransition(.numericText(value: viewModel.balance))
-                    .animation(.spring(duration: 0.4), value: viewModel.balance)
-            }
-
-            if viewModel.netCurveData.count < 2 {
-                ContentUnavailableView {
-                    Label("No Trend Data", systemImage: "chart.xyaxis.line")
-                } description: {
-                    Text("Not enough data for this period.")
-                }
-                .frame(minHeight: 120)
-            } else {
-                cumulativeLineChart(accent: accent)
-            }
-        }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-    }
-
-    @ViewBuilder
-    private func cumulativeLineChart(accent: Color) -> some View {
-        let unit: Calendar.Component = {
-            switch viewModel.selectedPeriod {
-            case .week, .month: return .day
-            case .year, .all: return .month
-            }
-        }()
-
-        Chart(viewModel.netCurveData) { point in
-            AreaMark(
-                x: .value("Date", point.date, unit: unit),
-                yStart: .value("Zero", 0),
-                yEnd: .value("Net", point.cumulativeNet)
-            )
-            .foregroundStyle(
-                LinearGradient(
-                    colors: [accent.opacity(0.25), accent.opacity(0.03)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .interpolationMethod(.monotone)
-
-            LineMark(
-                x: .value("Date", point.date, unit: unit),
-                y: .value("Net", point.cumulativeNet)
-            )
-            .foregroundStyle(accent)
-            .lineStyle(StrokeStyle(lineWidth: 2.5))
-            .interpolationMethod(.monotone)
-
-            PointMark(
-                x: .value("Date", point.date, unit: unit),
-                y: .value("Net", point.cumulativeNet)
-            )
-            .symbolSize(point.date == viewModel.netCurveData.last?.date ? 30 : 0)
-            .foregroundStyle(accent)
-        }
-        .frame(height: 140)
-        .chartYAxis {
-            AxisMarks(position: .leading) { _ in
-                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4]))
-                    .foregroundStyle(Color(.systemGray5))
-                AxisValueLabel()
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .chartXAxis {
-            AxisMarks { _ in
-                AxisValueLabel()
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .animation(.spring(duration: 0.4), value: viewModel.periodOffset)
-    }
-
-    // MARK: - Helpers
 
     private func formatSigned(_ value: Double) -> String {
         let prefix = value > 0 ? "+" : (value < 0 ? "-" : "")
@@ -538,9 +522,7 @@ struct CategoryBreakdownRow: View {
         .padding(.vertical, 8)
         .padding(.horizontal, isHighlighted ? 6 : 0)
         .background(
-            isHighlighted
-                ? Color(hex: item.categoryColorHex).opacity(0.06)
-                : Color.clear,
+            isHighlighted ? Color(hex: item.categoryColorHex).opacity(0.06) : Color.clear,
             in: RoundedRectangle(cornerRadius: 10, style: .continuous)
         )
         .animation(.spring(duration: 0.3), value: isHighlighted)
