@@ -73,76 +73,50 @@ struct TransactionsView: View {
     }
     
     // MARK: - Balance Card
-    
+
     private var balanceCard: some View {
-        let net = viewModel.totalIncome - viewModel.totalExpense
-        let netColor: Color = net > 0 ? .green : (net < 0 ? .red : .primary)
-        
-        return VStack(spacing: 14) {
-            Text(netFormatted(net))
+        let (label, amount, color) = balanceCardContent
+        return VStack(spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(formattedCardAmount(amount, type: viewModel.filterType))
                 .font(.system(size: 36, weight: .bold, design: .rounded))
-                .foregroundStyle(netColor)
-                .contentTransition(.numericText(value: net))
-                .animation(.spring(duration: 0.4), value: net)
-            
-            
-            Rectangle()
-                .fill(Color(.separator))
-                .frame(height: 0.5)
-            
-            HStack(spacing: 0) {
-                incomeExpenseColumn(
-                    title: "Income",
-                    amount: viewModel.totalIncome,
-                    icon: "arrow.down.circle.fill",
-                    color: .green
-                )
-                
-                Rectangle()
-                    .fill(Color(.separator))
-                    .frame(width: 0.5, height: 44)
-                
-                incomeExpenseColumn(
-                    title: "Expense",
-                    amount: viewModel.totalExpense,
-                    icon: "arrow.up.circle.fill",
-                    color: .red
-                )
-            }
+                .foregroundStyle(color)
+                .contentTransition(.numericText(value: amount))
+                .animation(.spring(duration: 0.4), value: amount)
         }
-        .padding(18)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
         .background(
             Color(.secondarySystemGroupedBackground),
             in: RoundedRectangle(cornerRadius: 20, style: .continuous)
         )
+        .animation(.spring(duration: 0.3), value: viewModel.filterType)
     }
-    
-    private func incomeExpenseColumn(
-        title: String,
-        amount: Double,
-        icon: String,
-        color: Color
-    ) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .foregroundStyle(color)
-                .font(.system(size: 24))
-                .frame(width: 28)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(CurrencyFormatter.format(amount, currencyCode: currencyCode))
-                    .font(.subheadline.weight(.semibold))
-                    .fontDesign(.rounded)
-                    .foregroundStyle(color)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
+
+    private var balanceCardContent: (label: String, amount: Double, color: Color) {
+        switch viewModel.filterType {
+        case .income:
+            return ("Income", viewModel.totalIncome, .green)
+        case .expense:
+            return ("Expense", viewModel.totalExpense, .red)
+        case nil:
+            let net = viewModel.totalIncome - viewModel.totalExpense
+            let color: Color = net > 0 ? .green : (net < 0 ? .red : .primary)
+            return ("Net Balance", net, color)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 6)
+    }
+
+    private func formattedCardAmount(_ amount: Double, type: TransactionType?) -> String {
+        switch type {
+        case .income:
+            return "+\(CurrencyFormatter.format(amount, currencyCode: currencyCode))"
+        case .expense:
+            return "-\(CurrencyFormatter.format(amount, currencyCode: currencyCode))"
+        case nil:
+            return netFormatted(amount)
+        }
     }
     
     // MARK: - Filters

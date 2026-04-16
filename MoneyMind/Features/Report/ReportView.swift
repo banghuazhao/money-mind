@@ -51,7 +51,6 @@ struct ReportView: View {
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.body.weight(.semibold))
-//                    .foregroundStyle(.accentColor)
                     .frame(width: 36, height: 36)
                     .contentShape(Rectangle())
             }
@@ -92,19 +91,31 @@ struct ReportView: View {
                     .foregroundStyle(isPositive ? .green : .red)
                     .contentTransition(.numericText(value: viewModel.balance))
                     .animation(.spring(duration: 0.4), value: viewModel.balance)
-
-                Text("Net Balance")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
 
-            Divider()
+            Rectangle().fill(Color(.separator)).frame(height: 0.5)
 
-            // Income / Expense comparison bars
-            incomeExpenseComparison
+            // Income / Expense row
+            HStack(spacing: 0) {
+                incomeExpenseColumn(
+                    title: "Income",
+                    amount: viewModel.totalIncome,
+                    icon: "arrow.down.circle.fill",
+                    color: .green
+                )
 
-            Divider()
+                Rectangle().fill(Color(.separator)).frame(width: 0.5, height: 44)
+
+                incomeExpenseColumn(
+                    title: "Expense",
+                    amount: viewModel.totalExpense,
+                    icon: "arrow.up.circle.fill",
+                    color: .red
+                )
+            }
+
+            Rectangle().fill(Color(.separator)).frame(height: 0.5)
 
             // Stats row
             HStack(spacing: 0) {
@@ -125,60 +136,29 @@ struct ReportView: View {
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    private var incomeExpenseComparison: some View {
-        let maxAmount = max(viewModel.totalIncome, viewModel.totalExpense, 1)
+    private func incomeExpenseColumn(title: String, amount: Double, icon: String, color: Color) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+                .font(.system(size: 22))
+                .frame(width: 26)
 
-        return VStack(spacing: 10) {
-            comparisonRow(
-                icon: "arrow.down.circle.fill",
-                label: "Income",
-                amount: viewModel.totalIncome,
-                ratio: viewModel.totalIncome / maxAmount,
-                color: .green
-            )
-            comparisonRow(
-                icon: "arrow.up.circle.fill",
-                label: "Expense",
-                amount: viewModel.totalExpense,
-                ratio: viewModel.totalExpense / maxAmount,
-                color: .red
-            )
-        }
-    }
-
-    private func comparisonRow(
-        icon: String, label: String, amount: Double, ratio: Double, color: Color
-    ) -> some View {
-        VStack(spacing: 6) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.caption)
-                    .foregroundStyle(color)
-                Text(label)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Spacer()
                 Text(CurrencyFormatter.format(amount, currencyCode: currencyCode))
                     .font(.subheadline.weight(.semibold))
                     .fontDesign(.rounded)
                     .foregroundStyle(color)
                     .contentTransition(.numericText(value: amount))
                     .animation(.spring(duration: 0.4), value: amount)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-
-            GeometryReader { geo in
-                Capsule()
-                    .fill(color.opacity(0.15))
-                    .overlay(alignment: .leading) {
-                        Capsule()
-                            .fill(color.gradient)
-                            .frame(width: geo.size.width * max(ratio, 0.02))
-                    }
-            }
-            .frame(height: 8)
-            .clipShape(Capsule())
-            .animation(.spring(duration: 0.6), value: ratio)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
     }
 
     private func miniStat(title: String, value: String, color: Color) -> some View {
