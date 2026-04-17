@@ -38,12 +38,26 @@ struct TransactionsView: View {
                 }
             }
             .sheet(isPresented: $viewModel.isShowingAddSheet) {
-                TransactionFormView(categories: viewModel.categories) { transaction in
+                TransactionFormView(
+                    categories: viewModel.categories,
+                    goals: viewModel.goals,
+                    goalSaved: { viewModel.savedAmount(for: $0) }
+                ) { transaction in
                     viewModel.addTransaction(transaction)
+                } onContribute: { goalId, amount, date, note in
+                    viewModel.addContribution(
+                        goalId: goalId,
+                        amount: amount,
+                        date: date,
+                        note: note
+                    )
                 }
             }
             .sheet(item: $viewModel.editingTransaction) { transaction in
-                TransactionFormView(transaction: transaction, categories: viewModel.categories) { updated in
+                TransactionFormView(
+                    transaction: transaction,
+                    categories: viewModel.categories
+                ) { updated in
                     viewModel.updateTransaction(updated)
                 }
             }
