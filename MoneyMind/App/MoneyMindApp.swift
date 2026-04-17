@@ -10,6 +10,11 @@ import Dependencies
 @main
 struct MoneyMindApp: App {
     init() {
+        CurrencyCatalog.applyLocaleDefaultCurrencyIfNeeded()
+        if UserDefaults.standard.object(forKey: "hasCompletedOnboarding") == nil,
+           moneyMindDatabaseFileExistedBeforeLaunch() {
+            UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+        }
         prepareDependencies {
             $0.defaultDatabase = try! appDatabase()
         }
@@ -17,7 +22,23 @@ struct MoneyMindApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            AppRootView()
+        }
+    }
+}
+
+private struct AppRootView: View {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
+    var body: some View {
+        Group {
+            if hasCompletedOnboarding {
+                MainTabView()
+            } else {
+                OnboardingView {
+                    hasCompletedOnboarding = true
+                }
+            }
         }
     }
 }

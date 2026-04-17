@@ -2,6 +2,20 @@ import Foundation
 import GRDB
 import SQLiteData
 
+/// Whether `db.sqlite` was already on disk before this launch (e.g. user upgraded the app).
+/// Used so existing users are not forced through onboarding again.
+func moneyMindDatabaseFileExistedBeforeLaunch() -> Bool {
+    let fileManager = FileManager.default
+    guard let appSupportURL = try? fileManager.url(
+        for: .applicationSupportDirectory,
+        in: .userDomainMask,
+        appropriateFor: nil,
+        create: false
+    ) else { return false }
+    let url = appSupportURL.appendingPathComponent("MoneyMind").appendingPathComponent("db.sqlite")
+    return fileManager.fileExists(atPath: url.path)
+}
+
 func appDatabase() throws -> DatabaseQueue {
     let fileManager = FileManager.default
     let appSupportURL = try fileManager.url(

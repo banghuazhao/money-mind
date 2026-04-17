@@ -2,12 +2,21 @@ import SwiftUI
 
 struct SettingsView: View {
     @State private var viewModel = SettingsViewModel()
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("currencyCode") private var currencyCode = "USD"
     @State private var showCurrencyPicker = false
     @State private var showCategories = false
+    @State private var showPrivacy = false
+    @State private var shareExport: ShareExportItem?
+    @State private var showExportError = false
+    @State private var exportErrorText = ""
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
     }
 
     var body: some View {
@@ -24,6 +33,8 @@ struct SettingsView: View {
 
                     sectionLabel("About")
                     aboutCard
+
+                    replayIntroButton
 
                     footerNote
                 }
@@ -43,7 +54,23 @@ struct SettingsView: View {
             .sheet(isPresented: $showCategories) {
                 CategoriesView()
             }
+            .sheet(isPresented: $showPrivacy) {
+                PrivacyPolicyView()
+            }
+            .sheet(item: $shareExport) { item in
+                ShareSheet(activityItems: [item.url])
+            }
+            .alert("Export failed", isPresented: $showExportError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(exportErrorText)
+            }
         }
+    }
+
+    private struct ShareExportItem: Identifiable {
+        let id = UUID()
+        let url: URL
     }
 
     // MARK: - Header
@@ -115,6 +142,31 @@ struct SettingsView: View {
             ) {
                 showCategories = true
             }
+            rowDivider
+            SettingsRowButton(
+                title: "Export data",
+                subtitle: "CSV file: transactions, categories, budgets, goals",
+                trailing: nil,
+                icon: "square.and.arrow.up",
+                iconTint: .teal
+            ) {
+                do {
+                    shareExport = ShareExportItem(url: try viewModel.exportCSVFileURL())
+                } catch {
+                    exportErrorText = error.localizedDescription
+                    showExportError = true
+                }
+            }
+            rowDivider
+            SettingsRowButton(
+                title: "Privacy",
+                subtitle: "How MoneyMind handles your data",
+                trailing: nil,
+                icon: "hand.raised.fill",
+                iconTint: .indigo
+            ) {
+                showPrivacy = true
+            }
         }
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
@@ -127,6 +179,13 @@ struct SettingsView: View {
                 icon: "info.circle.fill",
                 iconTint: .purple
             )
+            rowDivider
+            SettingsInfoRow(
+                title: "Build",
+                value: buildNumber,
+                icon: "hammer.fill",
+                iconTint: .orange
+            )
         }
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
@@ -136,6 +195,19 @@ struct SettingsView: View {
             .fill(Color(.separator).opacity(0.35))
             .frame(height: 0.5)
             .padding(.leading, 56)
+    }
+
+    private var replayIntroButton: some View {
+        Button {
+            hasCompletedOnboarding = false
+        } label: {
+            Text("Show welcome screens again")
+                .font(.subheadline.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
     }
 
     private var footerNote: some View {
