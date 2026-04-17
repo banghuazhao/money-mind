@@ -6,15 +6,34 @@ struct SettingsView: View {
     @State private var showCurrencyPicker = false
     @State private var showCategories = false
 
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+
     var body: some View {
         NavigationStack {
-            List {
-                brandingSection
-                preferencesSection
-                organizationSection
-                aboutSection
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    headerCard
+
+                    sectionLabel("Preferences")
+                    preferencesCard
+
+                    sectionLabel("Data")
+                    dataCard
+
+                    sectionLabel("About")
+                    aboutCard
+
+                    footerNote
+                }
+                .padding(.horizontal)
+                .padding(.top, 4)
+                .padding(.bottom, 28)
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $showCurrencyPicker) {
                 CurrencyPickerView(
                     selectedCode: $currencyCode,
@@ -27,89 +46,191 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Branding
+    // MARK: - Header
 
-    private var brandingSection: some View {
-        Section {
-            VStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(hex: "#1A1A2E"), Color(hex: "#0F3460")],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+    private var headerCard: some View {
+        HStack(alignment: .center, spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(hex: "#1A1A2E"), Color(hex: "#0F3460")],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        .frame(width: 72, height: 72)
-                    Image(systemName: "banknote.fill")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.white)
-                }
+                    )
+                    .frame(width: 64, height: 64)
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
                 Text("MoneyMind")
                     .font(.title3.weight(.bold))
-                Text("Track smarter, spend wiser")
+                Text("Budget tracker — track spending and save more.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    // MARK: - Preferences
+    // MARK: - Sections
 
-    private var preferencesSection: some View {
-        Section("Preferences") {
-            Button {
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .tracking(0.6)
+            .padding(.horizontal, 4)
+    }
+
+    private var preferencesCard: some View {
+        VStack(spacing: 0) {
+            SettingsRowButton(
+                title: "Currency",
+                subtitle: viewModel.currencySubtitle(for: currencyCode),
+                trailing: currencyCode,
+                icon: "dollarsign.circle.fill",
+                iconTint: .green
+            ) {
                 showCurrencyPicker = true
-            } label: {
-                HStack {
-                    Label("Currency", systemImage: "dollarsign.circle.fill")
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Text(currencyCode)
-                        .foregroundStyle(.secondary)
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(.tertiary)
-                        .font(.caption)
-                }
             }
         }
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    // MARK: - Organization
-
-    private var organizationSection: some View {
-        Section("Organization") {
-            Button {
+    private var dataCard: some View {
+        VStack(spacing: 0) {
+            SettingsRowButton(
+                title: "Categories",
+                subtitle: "Income and expense labels for transactions",
+                trailing: nil,
+                icon: "tag.fill",
+                iconTint: .blue
+            ) {
                 showCategories = true
-            } label: {
-                HStack {
-                    Label("Categories", systemImage: "tag.fill")
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(.tertiary)
-                        .font(.caption)
-                }
             }
         }
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
-    // MARK: - About
-
-    private var aboutSection: some View {
-        Section("About") {
-            HStack {
-                Label("Version", systemImage: "info.circle.fill")
-                Spacer()
-                Text("1.0.0")
-                    .foregroundStyle(.secondary)
-            }
+    private var aboutCard: some View {
+        VStack(spacing: 0) {
+            SettingsInfoRow(
+                title: "Version",
+                value: appVersion,
+                icon: "info.circle.fill",
+                iconTint: .purple
+            )
         }
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var rowDivider: some View {
+        Rectangle()
+            .fill(Color(.separator).opacity(0.35))
+            .frame(height: 0.5)
+            .padding(.leading, 56)
+    }
+
+    private var footerNote: some View {
+        Text("Numbers stay on your device. Change currency anytime — existing amounts are not converted.")
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 8)
+            .padding(.top, 4)
+    }
+}
+
+// MARK: - Row Components
+
+private struct SettingsRowButton: View {
+    let title: String
+    let subtitle: String?
+    let trailing: String?
+    let icon: String
+    let iconTint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(iconTint.opacity(0.15))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(iconTint)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    if let subtitle, !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                if let trailing {
+                    Text(trailing)
+                        .font(.subheadline.weight(.semibold))
+                        .fontDesign(.rounded)
+                        .foregroundStyle(.secondary)
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct SettingsInfoRow: View {
+    let title: String
+    let value: String
+    let icon: String
+    let iconTint: Color
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(iconTint.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(iconTint)
+            }
+
+            Text(title)
+                .font(.body.weight(.medium))
+                .foregroundStyle(.primary)
+
+            Spacer()
+
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .fontDesign(.rounded)
+                .foregroundStyle(.secondary)
+        }
+        .padding(14)
     }
 }
 
@@ -121,42 +242,69 @@ struct CurrencyPickerView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
 
-    var filteredCurrencies: [(code: String, name: String, symbol: String)] {
+    private var filteredCurrencies: [(code: String, name: String, symbol: String)] {
         if searchText.isEmpty { return availableCurrencies }
         return availableCurrencies.filter {
             $0.code.localizedCaseInsensitiveContains(searchText) ||
-            $0.name.localizedCaseInsensitiveContains(searchText)
+            $0.name.localizedCaseInsensitiveContains(searchText) ||
+            $0.symbol.localizedCaseInsensitiveContains(searchText)
         }
     }
 
     var body: some View {
         NavigationStack {
-            List(filteredCurrencies, id: \.code) { currency in
-                Button {
-                    selectedCode = currency.code
-                    dismiss()
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(currency.name)
-                                .foregroundStyle(.primary)
-                            Text(currency.code)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Text(currency.symbol)
-                            .foregroundStyle(.secondary)
-                        if selectedCode == currency.code {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(.tint)
-                                .fontWeight(.semibold)
+            Group {
+                if filteredCurrencies.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                } else {
+                    List {
+                        ForEach(filteredCurrencies, id: \.code) { currency in
+                            Button {
+                                selectedCode = currency.code
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .fill(Color.accentColor.opacity(0.12))
+                                            .frame(width: 40, height: 40)
+                                        Text(currency.symbol)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.5)
+                                            .frame(width: 36)
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(currency.name)
+                                            .font(.body.weight(.medium))
+                                            .foregroundStyle(.primary)
+                                        Text(currency.code)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer(minLength: 8)
+
+                                    if selectedCode == currency.code {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.green)
+                                            .font(.title3)
+                                            .symbolRenderingMode(.hierarchical)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
+                    .listStyle(.insetGrouped)
                 }
             }
-            .searchable(text: $searchText, prompt: "Search currency")
-            .navigationTitle("Select Currency")
+            .background(Color(.systemGroupedBackground))
+            .searchable(text: $searchText, prompt: "Search by name, code, or symbol")
+            .navigationTitle("Currency")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
