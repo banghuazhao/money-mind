@@ -203,19 +203,6 @@ struct ReportView: View {
             }
             .frame(width: 110, height: 110)
             .chartLegend(.hidden)
-            .overlay {
-                VStack(spacing: 1) {
-                    Text(viewModel.selectedType == .expense ? "Spent" : "Earned")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(CurrencyFormatter.format(totalAmount, currencyCode: currencyCode))
-                        .font(.caption.weight(.bold))
-                        .fontDesign(.rounded)
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                }
-                .padding(6)
-            }
             .animation(.spring(duration: 0.4), value: viewModel.selectedPeriod)
 
             VStack(alignment: .leading, spacing: 6) {
