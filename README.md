@@ -2,6 +2,26 @@
 
 **Budget tracker for iPhone and iPad** — log income and expenses, set monthly category budgets, save toward goals, and review spending with charts and exports. Built with SwiftUI; your data stays on the device.
 
+**Available on the App Store:** [MoneyMind: Budget Tracker App](https://apps.apple.com/us/app/moneymind-budget-tracker-app/id6748875528)
+
+<p align="center">
+  <a href="https://apps.apple.com/us/app/moneymind-budget-tracker-app/id6748875528">
+    <img src="https://toolbox.marketingtools.apple.com/api/badges/download-on-the-app-store/black/en-us?size=250x83" alt="Download on the App Store" width="180" />
+  </a>
+</p>
+
+---
+
+## Screenshots
+
+Composite preview of core screens (transactions, report, new transaction, budgets):
+
+<p align="center">
+  <img src="Screenshots/screenshot.png" alt="MoneyMind screenshots: Transactions, Report, New Transaction, and Budgets" width="900" />
+</p>
+
+Add more images under [`Screenshots/`](Screenshots/) if you want separate per-screen shots in this section.
+
 ---
 
 ## Features
@@ -61,7 +81,7 @@ MoneyMind/
 
 - Financial data is stored **locally** in SQLite (`Application Support/MoneyMind/db.sqlite`).
 - There is **no in-app account** and **no server** defined in this codebase; export is **user-initiated** (share sheet).
-- For App Store submission, align your **App Privacy** labels and any hosted **privacy policy** with what you actually ship.
+- The shipping app is listed as **Data Not Collected** on the [App Store privacy section](https://apps.apple.com/us/app/moneymind-budget-tracker-app/id6748875528); keep **App Privacy** labels and any hosted **privacy policy** aligned with each release.
 
 ---
 
