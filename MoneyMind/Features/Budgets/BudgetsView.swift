@@ -19,6 +19,8 @@ struct BudgetsView: View {
                         overallSummaryCard
                         budgetListSection
                     }
+
+                    InlineAdaptiveBannerView(adUnitID: AdConfiguration.bannerAdUnitID)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 24)

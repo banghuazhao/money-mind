@@ -15,6 +15,8 @@ struct SavingsGoalsView: View {
                         savingsRateCard
                         goalListSection
                     }
+
+                    InlineAdaptiveBannerView(adUnitID: AdConfiguration.bannerAdUnitID)
                 }
                 .padding(.horizontal)
                 .padding(.top, 4)

@@ -37,6 +37,8 @@ struct SettingsView: View {
                     replayIntroButton
 
                     footerNote
+
+                    InlineAdaptiveBannerView(adUnitID: AdConfiguration.bannerAdUnitID)
                 }
                 .padding(.horizontal)
                 .padding(.top, 4)

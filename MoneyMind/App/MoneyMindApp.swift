@@ -10,6 +10,7 @@ import Dependencies
 @main
 struct MoneyMindApp: App {
     init() {
+        AdMobBootstrap.startIfNeeded()
         CurrencyCatalog.applyLocaleDefaultCurrencyIfNeeded()
         if UserDefaults.standard.object(forKey: "hasCompletedOnboarding") == nil,
            moneyMindDatabaseFileExistedBeforeLaunch() {

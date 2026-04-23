@@ -142,4 +142,6 @@ logs/
 .env.test
 .env.production 
 
+MoneyMind/Config/Release.xcconfig
+
 
