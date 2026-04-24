@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9988404A2F9AD95900984283 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 998840492F9AD95900984283 /* GoogleMobileAds */; };
 		99E425DF2F8E581500EE8227 /* SQLiteData in Frameworks */ = {isa = PBXBuildFile; productRef = 99E425DE2F8E581500EE8227 /* SQLiteData */; };
 /* End PBXBuildFile section */
 
@@ -14,9 +15,22 @@
 		9992356C2E2CF58300AE3AC9 /* MoneyMind.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoneyMind.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9988404C2F9AD9BF00984283 /* Exceptions for "MoneyMind" folder in "MoneyMind" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 9992356B2E2CF58300AE3AC9 /* MoneyMind */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9992356E2E2CF58300AE3AC9 /* MoneyMind */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9988404C2F9AD9BF00984283 /* Exceptions for "MoneyMind" folder in "MoneyMind" target */,
+			);
 			path = MoneyMind;
 			sourceTree = "<group>";
 		};
@@ -27,6 +41,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9988404A2F9AD95900984283 /* GoogleMobileAds in Frameworks */,
 				99E425DF2F8E581500EE8227 /* SQLiteData in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -71,6 +86,7 @@
 			name = MoneyMind;
 			packageProductDependencies = (
 				99E425DE2F8E581500EE8227 /* SQLiteData */,
+				998840492F9AD95900984283 /* GoogleMobileAds */,
 			);
 			productName = MoneyMind;
 			productReference = 9992356C2E2CF58300AE3AC9 /* MoneyMind.app */;
@@ -102,6 +118,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				99E425DD2F8E581500EE8227 /* XCRemoteSwiftPackageReference "sqlite-data" */,
+				998840482F9AD95900984283 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9992356D2E2CF58300AE3AC9 /* Products */;
@@ -136,6 +153,8 @@
 /* Begin XCBuildConfiguration section */
 		999235752E2CF58400AE3AC9 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 9992356E2E2CF58300AE3AC9 /* MoneyMind */;
+			baseConfigurationReferenceRelativePath = Config/Debug.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -200,6 +219,8 @@
 		};
 		999235762E2CF58400AE3AC9 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 9992356E2E2CF58300AE3AC9 /* MoneyMind */;
+			baseConfigurationReferenceRelativePath = Config/Release.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -257,6 +278,8 @@
 		};
 		999235782E2CF58400AE3AC9 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 9992356E2E2CF58300AE3AC9 /* MoneyMind */;
+			baseConfigurationReferenceRelativePath = Config/Debug.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -265,6 +288,7 @@
 				DEVELOPMENT_TEAM = E6968P466E;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MoneyMind/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -285,6 +309,8 @@
 		};
 		999235792E2CF58400AE3AC9 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 9992356E2E2CF58300AE3AC9 /* MoneyMind */;
+			baseConfigurationReferenceRelativePath = Config/Release.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -293,6 +319,7 @@
 				DEVELOPMENT_TEAM = E6968P466E;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MoneyMind/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -335,6 +362,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		998840482F9AD95900984283 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.2.0;
+			};
+		};
 		99E425DD2F8E581500EE8227 /* XCRemoteSwiftPackageReference "sqlite-data" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pointfreeco/sqlite-data";
@@ -346,6 +381,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		998840492F9AD95900984283 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 998840482F9AD95900984283 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
 		99E425DE2F8E581500EE8227 /* SQLiteData */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 99E425DD2F8E581500EE8227 /* XCRemoteSwiftPackageReference "sqlite-data" */;
